@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shortener
+      POSTGRES_PASSWORD: shortener   # solo para dev local
+      POSTGRES_DB: shortener
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shortener"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+
+  migrate:
+    build:
+      context: ./backend
+      target: builder
+    environment:
+      DATABASE_URL: postgresql://shortener:shortener@postgres:5432/shortener
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npx prisma migrate deploy
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://shortener:shortener@postgres:5432/shortener
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: http://localhost:8080
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:3000
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

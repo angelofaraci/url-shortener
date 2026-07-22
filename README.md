@@ -28,15 +28,23 @@ docker run --name url-shortener-redis \
   -d redis:7
 ```
 
+On Windows (PowerShell), requires Docker Desktop running first:
+
+```powershell
+docker run --name url-shortener-postgres -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=url_shortener -p 5432:5432 -d postgres:16
+
+docker run --name url-shortener-redis -p 6379:6379 -d redis:7
+```
+
 ## 2. Backend setup
 
 ```bash
 cd backend
 npm install
 
-# rename env.example.txt to .env and adjust values if needed
+# copy .env.example to .env and adjust values if needed
 # (the defaults already match the docker run commands above)
-cp env.example.txt .env
+cp .env.example .env
 
 npm run prisma:generate
 npx prisma migrate deploy   # applies the committed migration in prisma/migrations
