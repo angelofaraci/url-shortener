@@ -1,0 +1,33 @@
+# Two hosts instead of path-based splitting on one host: the backend's catch-all
+# short-code redirect route lives at "/", which would collide with the frontend
+# SPA's own root routes if both were routed by path under a single host.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: url-shortener
+  namespace: url-shortener
+  labels:
+    app.kubernetes.io/name: url-shortener
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: url-shortener.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 3000
+    - host: app.url-shortener.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

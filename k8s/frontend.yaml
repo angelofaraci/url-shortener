@@ -1,0 +1,50 @@
+# Assumes url-shortener-frontend:latest is built locally and loaded into the cluster
+# (e.g. `kind load docker-image url-shortener-frontend:latest`) — not pulled from a registry.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: url-shortener
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/name: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: url-shortener-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: url-shortener
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
