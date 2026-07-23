@@ -17,3 +17,8 @@ output "ecr_registry" {
   description = "Registry host for `aws ecr get-login-password | docker login --username AWS --password-stdin <this>`"
   value       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com"
 }
+
+output "github_actions_role_arn" {
+  description = "Role ARN GitHub Actions assumes via OIDC to run Terraform"
+  value       = aws_iam_role.github_actions_terraform.arn
+}

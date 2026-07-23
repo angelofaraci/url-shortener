@@ -32,11 +32,11 @@ Thumbs.db
 k8s/secret.yaml
 
 # Terraform local state and working files — never commit real state to a public repo
-terraform/.terraform/
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/tfplan
-terraform/*.tfvars
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/tfplan
+**/*.tfvars
 
 # Third-party installer artifacts, not project source
 aws/
