@@ -27,3 +27,18 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Kubernetes secrets (real values) — commit k8s/secret.example.yaml instead
+k8s/secret.yaml
+
+# Terraform local state and working files — never commit real state to a public repo
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/tfplan
+terraform/*.tfvars
+
+# Third-party installer artifacts, not project source
+aws/
+awscliv2.zip
+kubectl

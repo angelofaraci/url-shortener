@@ -1,6 +1,10 @@
-# Two hosts instead of path-based splitting on one host: the backend's catch-all
-# short-code redirect route lives at "/", which would collide with the frontend
-# SPA's own root routes if both were routed by path under a single host.
+# Single host, path-based routing. Precedence (ingress-nginx resolves by
+# specificity, not declaration order): exact "/" and "/api", "/health",
+# "/assets" prefixes are more specific than the fallback "/" prefix, so they
+# always win over it. The fallback "/" prefix catches single-segment short
+# codes (e.g. /aB3dE9) and routes them to the backend's redirect handler.
+# The frontend has no client-side routes of its own (plain static SPA),
+# so it only needs the exact root path plus its Vite-built /assets bundle.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -14,6 +18,34 @@ spec:
     - host: url-shortener.local
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 3000
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 3000
+          - path: /assets
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
           - path: /
             pathType: Prefix
             backend:
@@ -21,13 +53,3 @@ spec:
                 name: backend
                 port:
                   number: 3000
-    - host: app.url-shortener.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
