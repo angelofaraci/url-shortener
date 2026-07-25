@@ -39,3 +39,27 @@ variable "http_ingress_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
+
+variable "private_subnet_cidrs" {
+  description = "CIDR blocks for the private subnets used by RDS (one per AZ, no IGW route)"
+  type        = list(string)
+  default     = ["10.0.11.0/24", "10.0.12.0/24"]
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class for the Postgres database"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_name" {
+  description = "Initial database name created on the RDS instance"
+  type        = string
+  default     = "url_shortener"
+}
+
+variable "db_username" {
+  description = "Master username for the RDS instance"
+  type        = string
+  default     = "app"
+}

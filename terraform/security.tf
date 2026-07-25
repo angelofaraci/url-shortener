@@ -31,6 +31,31 @@ resource "aws_security_group" "instance" {
   }
 }
 
+resource "aws_security_group" "rds" {
+  name        = "${var.project_name}-rds-sg"
+  description = "Postgres access from the app instance only, no public ingress"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Postgres from the app instance"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.instance.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-rds-sg"
+  }
+}
+
 resource "aws_iam_role" "instance" {
   name = "${var.project_name}-instance-role"
 
