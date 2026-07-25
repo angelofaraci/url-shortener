@@ -22,3 +22,9 @@ output "github_actions_role_arn" {
   description = "Role ARN GitHub Actions assumes via OIDC to run Terraform"
   value       = aws_iam_role.github_actions_terraform.arn
 }
+
+output "rds_endpoint" {
+  description = "RDS Postgres endpoint (host:port) — connection string lives in SSM, not here"
+  value       = aws_db_instance.main.endpoint
+  sensitive   = true
+}
