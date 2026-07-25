@@ -1,14 +1,22 @@
+# AWS-managed prefix list of CloudFront's origin-facing IP ranges. Port 80
+# ingress is restricted to this list so the plaintext X-Origin-Verify
+# shared secret cannot be captured and replayed directly against the
+# instance's public Elastic IP, bypassing CloudFront.
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_security_group" "instance" {
   name        = "${var.project_name}-instance-sg"
   description = "HTTP/HTTPS only no SSH, admin access goes through SSM Session Manager"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = [var.http_ingress_cidr]
+    description     = "HTTP from CloudFront origin-facing ranges only"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
 
   ingress {
@@ -103,6 +111,20 @@ resource "aws_iam_role_policy" "instance_secrets" {
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
         Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/secret/*"
+      },
+      {
+        # PR 4 fix: the "params" Ansible role also needs config/public_base_url
+        # (a plain String, not a secret) to render CORS_ORIGIN. Rather than
+        # thread it through as an SSM Send-Command extra-var (which would
+        # require changing converge.sh's frozen, fixed-literal command —
+        # see the "Shell command composition" threat-matrix row — for a
+        # value that isn't sensitive), grant the instance role read-only
+        # access to config/* too. No kms:Decrypt is added because config/*
+        # parameters are String, not SecureString.
+        Sid      = "SsmConfigRead"
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/config/*"
       },
       {
         Sid      = "KmsDecryptSsm"

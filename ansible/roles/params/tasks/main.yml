@@ -34,6 +34,20 @@
     params_ts_authkey: "{{ params_ssm_secrets.results[2].stdout }}"
   no_log: true
 
+- name: Read the public base URL from SSM config (CORS_ORIGIN source, not a secret)
+  ansible.builtin.command: >
+    aws ssm get-parameter
+    --name /{{ project_name }}/config/public_base_url
+    --region {{ aws_region }}
+    --query Parameter.Value
+    --output text
+  register: params_public_base_url
+  changed_when: false
+
+- name: Set cors_origin from the CloudFront public base URL
+  ansible.builtin.set_fact:
+    params_cors_origin: "{{ params_public_base_url.stdout }}"
+
 - name: Write the backend runtime environment file
   ansible.builtin.template:
     src: env.j2

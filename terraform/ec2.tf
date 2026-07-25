@@ -17,8 +17,8 @@ data "aws_ami" "amazon_linux" {
 # Tailscale, then drop a oneshot systemd unit that pulls the actual
 # convergence bundle from the artifacts bucket and runs it. All host
 # state (compose stack, nginx proxy, Tailscale join) is applied by that
-# Ansible playbook, not here — the playbook tree itself ships in a later
-# PR. Amazon Linux 2023 already ships the SSM agent enabled by default,
+# Ansible playbook, implemented in ansible/site.yml and its roles, not
+# here. Amazon Linux 2023 already ships the SSM agent enabled by default,
 # so there is no separate SSM agent install step.
 locals {
   user_data = <<-EOF
@@ -41,8 +41,8 @@ locals {
     #!/bin/bash
     set -euo pipefail
     aws s3 cp "s3://${aws_s3_bucket.artifacts.bucket}/ansible/latest.tar.gz" /tmp/ansible-bundle.tar.gz
-    rm -rf /opt/ansible/*
-    tar -xzf /tmp/ansible-bundle.tar.gz -C /opt/ansible
+    rm -rf /opt/ansible /opt/docker-compose.prod.yml
+    tar -xzf /tmp/ansible-bundle.tar.gz -C /opt
     ansible-playbook -i localhost, -c local /opt/ansible/site.yml
     CONVERGE
     chmod +x /usr/local/bin/converge.sh
