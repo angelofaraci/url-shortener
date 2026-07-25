@@ -1,14 +1,22 @@
+# AWS-managed prefix list of CloudFront's origin-facing IP ranges. Port 80
+# ingress is restricted to this list so the plaintext X-Origin-Verify
+# shared secret cannot be captured and replayed directly against the
+# instance's public Elastic IP, bypassing CloudFront.
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_security_group" "instance" {
   name        = "${var.project_name}-instance-sg"
   description = "HTTP/HTTPS only no SSH, admin access goes through SSM Session Manager"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = [var.http_ingress_cidr]
+    description     = "HTTP from CloudFront origin-facing ranges only"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
 
   ingress {

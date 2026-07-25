@@ -52,8 +52,32 @@
   changed_when: false
   no_log: true
 
-- name: Bring the Compose stack up (only recreates what changed)
-  ansible.builtin.command: docker compose -f {{ compose_file }} up -d --remove-orphans
+- name: Pull the current backend image (compose's default pull_policy only
+    pulls when the image is missing locally, so :latest must be pulled
+    explicitly on every convergence run)
+  ansible.builtin.command: docker compose -f {{ compose_file }} pull
+  args:
+    chdir: "{{ app_dir }}"
+  environment:
+    BACKEND_IMAGE: "{{ app_backend_image }}"
+  changed_when: false
+
+- name: Run the one-shot migrate container explicitly (idempotent no-op
+    against an up-to-date schema, run before the long-running services
+    come up so it never flips the play's overall changed-status or gets
+    restarted by `up -d`)
+  ansible.builtin.command: docker compose -f {{ compose_file }} run --rm migrate
+  args:
+    chdir: "{{ app_dir }}"
+  environment:
+    BACKEND_IMAGE: "{{ app_backend_image }}"
+  register: app_compose_migrate
+  changed_when: false
+
+- name: Bring the long-running services up (only recreates what changed;
+    --no-deps since migrate already ran explicitly above and its removed
+    --rm container would otherwise be re-triggered as backend's dependency)
+  ansible.builtin.command: docker compose -f {{ compose_file }} up -d --remove-orphans --no-deps backend proxy redis
   args:
     chdir: "{{ app_dir }}"
   environment:

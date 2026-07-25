@@ -114,15 +114,14 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "RdsManage"
-        Effect   = "Allow"
-        Action   = ["rds:*"]
-        Resource = aws_db_instance.main.arn
-      },
-      {
+        # Scoped to exactly what deploy.yml invokes: `aws s3 sync --delete`
+        # (frontend assets, needs List/Get/Put/Delete) and `aws s3 cp`
+        # (index.html, needs Put/Get) against the frontend and artifacts
+        # buckets. No rds:* — this workflow never calls any `aws rds`
+        # command, RDS is managed exclusively by Terraform.
         Sid    = "S3FrontendAndArtifacts"
         Effect = "Allow"
-        Action = ["s3:*"]
+        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
         Resource = [
           aws_s3_bucket.frontend.arn,
           "${aws_s3_bucket.frontend.arn}/*",
@@ -133,7 +132,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       {
         Sid      = "CloudfrontManage"
         Effect   = "Allow"
-        Action   = ["cloudfront:*", "cloudfront:CreateInvalidation"]
+        Action   = ["cloudfront:CreateInvalidation"]
         Resource = aws_cloudfront_distribution.frontend.arn
       },
       {

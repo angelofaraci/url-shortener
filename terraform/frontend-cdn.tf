@@ -3,7 +3,7 @@
 # Everything else (the API and root-level short codes like /abc123) is
 # proxied to the EC2 instance's Elastic IP, verified by a shared-secret
 # header that only CloudFront injects (terraform/ec2.tf's EIP, nginx checks
-# it in the convergence bundle added in a later PR).
+# it in ansible/roles/proxy/templates/nginx.conf.j2).
 
 resource "aws_s3_bucket" "frontend" {
   bucket        = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}"

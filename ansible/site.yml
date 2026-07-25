@@ -12,5 +12,18 @@
     - common
     - params
     - proxy
-    - app
-    - tailscale
+
+  tasks:
+    # Flush proxy's nginx-restart handler before app converges, so a
+    # mid-play failure in app (e.g. an ECR-related step) never leaves the
+    # templated nginx config un-reloaded/inconsistent with running state.
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+
+    - name: Converge the app role
+      ansible.builtin.include_role:
+        name: app
+
+    - name: Converge the tailscale role
+      ansible.builtin.include_role:
+        name: tailscale
