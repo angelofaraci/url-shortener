@@ -21,6 +21,39 @@ resource "aws_ssm_parameter" "config_instance_id" {
   }
 }
 
+resource "aws_ssm_parameter" "config_public_base_url" {
+  name        = "/${var.project_name}/config/public_base_url"
+  description = "Public HTTPS origin (CloudFront domain) — used by CI as VITE_API_URL / CORS_ORIGIN"
+  type        = "String"
+  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+
+  tags = {
+    Name = "${var.project_name}-config-public-base-url"
+  }
+}
+
+resource "aws_ssm_parameter" "config_distribution_id" {
+  name        = "/${var.project_name}/config/distribution_id"
+  description = "CloudFront distribution id — used by CI for cache invalidation"
+  type        = "String"
+  value       = aws_cloudfront_distribution.frontend.id
+
+  tags = {
+    Name = "${var.project_name}-config-distribution-id"
+  }
+}
+
+resource "aws_ssm_parameter" "config_artifacts_bucket" {
+  name        = "/${var.project_name}/config/artifacts_bucket"
+  description = "S3 bucket CI uploads the Ansible convergence bundle to"
+  type        = "String"
+  value       = aws_s3_bucket.artifacts.bucket
+
+  tags = {
+    Name = "${var.project_name}-config-artifacts-bucket"
+  }
+}
+
 resource "aws_ssm_parameter" "secret_database_url" {
   name        = "/${var.project_name}/secret/database_url"
   description = "Postgres connection string for the backend — instance role decrypt only"

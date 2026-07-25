@@ -1,6 +1,6 @@
 output "instance_public_ip" {
-  description = "Public IP of the app instance"
-  value       = aws_instance.app.public_ip
+  description = "Elastic IP of the app instance — stable across stop/start, this is the CloudFront custom origin"
+  value       = aws_eip.app.public_ip
 }
 
 output "instance_id" {
@@ -27,4 +27,24 @@ output "rds_endpoint" {
   description = "RDS Postgres endpoint (host:port) — connection string lives in SSM, not here"
   value       = aws_db_instance.main.endpoint
   sensitive   = true
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront distribution domain — public entrypoint for the SPA and API"
+  value       = aws_cloudfront_distribution.frontend.domain_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution id — used by CI for cache invalidation"
+  value       = aws_cloudfront_distribution.frontend.id
+}
+
+output "frontend_bucket_name" {
+  description = "Private S3 bucket the frontend build is synced to"
+  value       = aws_s3_bucket.frontend.bucket
+}
+
+output "artifacts_bucket_name" {
+  description = "Private S3 bucket for Ansible convergence bundles"
+  value       = aws_s3_bucket.artifacts.bucket
 }

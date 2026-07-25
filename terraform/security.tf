@@ -83,3 +83,39 @@ resource "aws_iam_instance_profile" "instance" {
   name = "${var.project_name}-instance-profile"
   role = aws_iam_role.instance.name
 }
+
+# The SSM default AWS-managed KMS key alias — resolved to its underlying
+# key ARN because kms:Decrypt must be granted against the actual key, not
+# the alias, for an IAM identity policy to take effect.
+data "aws_kms_alias" "ssm" {
+  name = "alias/aws/ssm"
+}
+
+resource "aws_iam_role_policy" "instance_secrets" {
+  name = "${var.project_name}-instance-secrets"
+  role = aws_iam_role.instance.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "SsmSecretsRead"
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/secret/*"
+      },
+      {
+        Sid      = "KmsDecryptSsm"
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = data.aws_kms_alias.ssm.target_key_arn
+      },
+      {
+        Sid      = "ArtifactsBundleRead"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "${aws_s3_bucket.artifacts.arn}/*"
+      }
+    ]
+  })
+}

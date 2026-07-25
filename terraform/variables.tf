@@ -29,9 +29,9 @@ variable "instance_type" {
 }
 
 variable "ecr_repositories" {
-  description = "Names of the ECR repositories to create, one per image"
+  description = "Names of the ECR repositories to create, one per image. Frontend is no longer an image — it ships as a static build synced to S3/CloudFront."
   type        = list(string)
-  default     = ["backend", "frontend"]
+  default     = ["backend"]
 }
 
 variable "http_ingress_cidr" {
