@@ -1,0 +1,16 @@
+---
+- name: Converge the url-shortener EC2 host
+  hosts: all
+  become: true
+  gather_facts: true
+
+  # Role order matters: common prepares the host, params decrypts secrets
+  # and writes .env, proxy renders nginx.conf, app brings the Compose stack
+  # up (picking up both files), tailscale joins the tailnet last since it
+  # has no dependency on the app stack being healthy.
+  roles:
+    - common
+    - params
+    - proxy
+    - app
+    - tailscale

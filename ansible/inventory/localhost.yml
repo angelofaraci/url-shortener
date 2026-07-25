@@ -1,0 +1,10 @@
+---
+# Documents/enables local runs (`ansible-playbook -i ansible/inventory/localhost.yml ansible/site.yml`).
+# The real converge.sh contract in terraform/ec2.tf invokes
+# `ansible-playbook -i localhost, -c local /opt/ansible/site.yml` directly
+# and does not read this file — both forms resolve to the same single
+# local-connection host.
+all:
+  hosts:
+    localhost:
+      ansible_connection: local

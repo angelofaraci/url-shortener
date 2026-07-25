@@ -1,0 +1,39 @@
+---
+# Idempotent re-check of what the (frozen) terraform/ec2.tf user_data
+# already did on first boot — safe to re-run against an already-converged
+# host with zero changes reported.
+
+- name: Ensure Docker is running and enabled
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ensure the application directory tree exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ app_dir }}"
+    - "{{ app_dir }}/nginx"
+
+- name: Ensure the Docker Compose CLI plugin directory exists
+  ansible.builtin.file:
+    path: /usr/local/lib/docker/cli-plugins
+    state: directory
+    mode: "0755"
+
+- name: Check whether the Docker Compose CLI plugin is already installed
+  ansible.builtin.stat:
+    path: /usr/local/lib/docker/cli-plugins/docker-compose
+  register: common_compose_plugin
+
+- name: Install the Docker Compose CLI plugin if missing
+  ansible.builtin.get_url:
+    url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
+    dest: /usr/local/lib/docker/cli-plugins/docker-compose
+    mode: "0755"
+  when: not common_compose_plugin.stat.exists

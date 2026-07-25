@@ -1,0 +1,64 @@
+---
+# Deploys the production Compose stack (redis, migrate, backend, proxy).
+# Postgres and frontend no longer exist here — RDS and S3+CloudFront
+# replaced them in PR1/PR2.
+
+- name: Fetch an IMDSv2 token for instance metadata
+  ansible.builtin.uri:
+    url: http://169.254.169.254/latest/api/token
+    method: PUT
+    headers:
+      X-aws-ec2-metadata-token-ttl-seconds: "21600"
+    return_content: true
+  register: app_imds_token
+  changed_when: false
+
+- name: Fetch the instance identity document
+  ansible.builtin.uri:
+    url: http://169.254.169.254/latest/dynamic/instance-identity/document
+    headers:
+      X-aws-ec2-metadata-token: "{{ app_imds_token.content }}"
+    return_content: true
+  register: app_instance_identity
+  changed_when: false
+
+- name: Compute the ECR registry and backend image reference
+  ansible.builtin.set_fact:
+    app_ecr_account_id: "{{ (app_instance_identity.content | from_json).accountId }}"
+    app_ecr_region: "{{ (app_instance_identity.content | from_json).region }}"
+
+- name: Set the backend image fact
+  ansible.builtin.set_fact:
+    app_ecr_registry: "{{ app_ecr_account_id }}.dkr.ecr.{{ app_ecr_region }}.amazonaws.com"
+    app_backend_image: "{{ app_ecr_account_id }}.dkr.ecr.{{ app_ecr_region }}.amazonaws.com/{{ project_name }}-backend:latest"
+
+# Interface note for the PR4 `ansible-bundle` CI job: the S3 bundle it
+# uploads must place docker-compose.prod.yml as a sibling of site.yml (tar
+# the repo root's docker-compose.prod.yml alongside the ansible/ tree) so
+# this path resolves once converge.sh extracts the bundle to /opt/ansible.
+- name: Deploy the production Compose file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../docker-compose.prod.yml"
+    dest: "{{ app_dir }}/{{ compose_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Log in to ECR using the instance role's credentials
+  ansible.builtin.shell: |
+    set -euo pipefail
+    aws ecr get-login-password --region {{ app_ecr_region }} \
+      | docker login --username AWS --password-stdin {{ app_ecr_registry }}
+  changed_when: false
+  no_log: true
+
+- name: Bring the Compose stack up (only recreates what changed)
+  ansible.builtin.command: docker compose -f {{ compose_file }} up -d --remove-orphans
+  args:
+    chdir: "{{ app_dir }}"
+  environment:
+    BACKEND_IMAGE: "{{ app_backend_image }}"
+  register: app_compose_up
+  changed_when: >-
+    'Creating' in app_compose_up.stderr or 'Recreating' in app_compose_up.stderr or
+    'Starting' in app_compose_up.stderr or 'Pulling' in app_compose_up.stderr

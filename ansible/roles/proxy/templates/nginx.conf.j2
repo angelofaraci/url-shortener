@@ -1,0 +1,30 @@
+# Managed by Ansible (roles/proxy) — do not edit by hand, changes are
+# overwritten on the next converge.
+#
+# Origin verification: CloudFront injects a fixed X-Origin-Verify header on
+# its EC2 custom origin (see terraform/frontend-cdn.tf). Any request that
+# does not carry the exact matching value is rejected before it ever
+# reaches the backend — this is what stops someone from bypassing
+# CloudFront and hitting the instance's public IP directly.
+map $http_x_origin_verify $origin_ok {
+    default 0;
+    "{{ params_origin_verify }}" 1;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    if ($origin_ok = 0) {
+        return 403;
+    }
+
+    location / {
+        proxy_pass http://backend:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
