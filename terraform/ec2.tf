@@ -13,20 +13,55 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+# Minimal first-boot bootstrap only: install Docker, Ansible, and
+# Tailscale, then drop a oneshot systemd unit that pulls the actual
+# convergence bundle from the artifacts bucket and runs it. All host
+# state (compose stack, nginx proxy, Tailscale join) is applied by that
+# Ansible playbook, not here — the playbook tree itself ships in a later
+# PR. Amazon Linux 2023 already ships the SSM agent enabled by default,
+# so there is no separate SSM agent install step.
 locals {
   user_data = <<-EOF
     #!/bin/bash
+    set -euo pipefail
     dnf update -y
-    dnf install -y docker
+    dnf install -y docker ansible-core
     systemctl enable --now docker
-    sudo dnf install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
-    sudo systemctl enable amazon-ssm-agent
-    sudo systemctl start amazon-ssm-agent
 
     mkdir -p /usr/local/lib/docker/cli-plugins
     curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
       -o /usr/local/lib/docker/cli-plugins/docker-compose
     chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+    curl -fsSL https://tailscale.com/install.sh | sh
+
+    mkdir -p /opt/ansible /opt/app
+
+    cat > /usr/local/bin/converge.sh <<'CONVERGE'
+    #!/bin/bash
+    set -euo pipefail
+    aws s3 cp "s3://${aws_s3_bucket.artifacts.bucket}/ansible/latest.tar.gz" /tmp/ansible-bundle.tar.gz
+    rm -rf /opt/ansible/*
+    tar -xzf /tmp/ansible-bundle.tar.gz -C /opt/ansible
+    ansible-playbook -i localhost, -c local /opt/ansible/site.yml
+    CONVERGE
+    chmod +x /usr/local/bin/converge.sh
+
+    cat > /etc/systemd/system/converge.service <<'UNIT'
+    [Unit]
+    Description=Run Ansible convergence
+    After=network-online.target docker.service
+    Wants=network-online.target
+
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/local/bin/converge.sh
+    Restart=on-failure
+    RestartSec=15
+    UNIT
+
+    systemctl daemon-reload
+    systemctl enable --now converge.service
   EOF
 }
 
@@ -44,5 +79,17 @@ resource "aws_instance" "app" {
 
   tags = {
     Name = "${var.project_name}-instance"
+  }
+}
+
+# CloudFront's default-behavior origin is this instance's public IP. A
+# stop/start reassigns an ephemeral IP and would silently break the CDN,
+# so an Elastic IP pins it. Free while attached to a running instance.
+resource "aws_eip" "app" {
+  instance = aws_instance.app.id
+  domain   = "vpc"
+
+  tags = {
+    Name = "${var.project_name}-eip"
   }
 }

@@ -101,3 +101,68 @@ resource "aws_iam_role_policy" "github_actions_terraform" {
     ]
   })
 }
+
+# Deploy-time permissions for the future GitHub Actions CD workflow
+# (a later PR). Reuses this same OIDC role instead of creating a second
+# one — the policy diff below is the only scoped extension, no
+# `Resource: "*"` grants and no access to `secret/*` SSM parameters.
+resource "aws_iam_role_policy" "github_actions_deploy" {
+  name = "${var.project_name}-deploy-permissions"
+  role = aws_iam_role.github_actions_terraform.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "RdsManage"
+        Effect   = "Allow"
+        Action   = ["rds:*"]
+        Resource = aws_db_instance.main.arn
+      },
+      {
+        Sid    = "S3FrontendAndArtifacts"
+        Effect = "Allow"
+        Action = ["s3:*"]
+        Resource = [
+          aws_s3_bucket.frontend.arn,
+          "${aws_s3_bucket.frontend.arn}/*",
+          aws_s3_bucket.artifacts.arn,
+          "${aws_s3_bucket.artifacts.arn}/*"
+        ]
+      },
+      {
+        Sid      = "CloudfrontManage"
+        Effect   = "Allow"
+        Action   = ["cloudfront:*", "cloudfront:CreateInvalidation"]
+        Resource = aws_cloudfront_distribution.frontend.arn
+      },
+      {
+        Sid    = "SsmSendCommand"
+        Effect = "Allow"
+        Action = ["ssm:SendCommand"]
+        Resource = [
+          "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.app.id}",
+          "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"
+        ]
+      },
+      {
+        Sid      = "SsmGetCommandInvocation"
+        Effect   = "Allow"
+        Action   = ["ssm:GetCommandInvocation"]
+        Resource = "*"
+      },
+      {
+        # IAM scoping fix: PutParameter/GetParameter/DeleteParameter are
+        # restricted to /url-shortener/config/* only — NOT the whole
+        # /url-shortener/* tree — so a compromised CI workflow cannot
+        # overwrite secret/* values (origin_verify, database_url,
+        # ts_authkey). No kms:Decrypt grant either; config/* parameters
+        # are plain Strings.
+        Sid      = "SsmConfigParamsOnly"
+        Effect   = "Allow"
+        Action   = ["ssm:PutParameter", "ssm:GetParameter", "ssm:GetParameters", "ssm:DeleteParameter"]
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/config/*"
+      }
+    ]
+  })
+}
