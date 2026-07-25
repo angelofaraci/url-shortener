@@ -105,6 +105,20 @@ resource "aws_iam_role_policy" "instance_secrets" {
         Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/secret/*"
       },
       {
+        # PR 4 fix: the "params" Ansible role also needs config/public_base_url
+        # (a plain String, not a secret) to render CORS_ORIGIN. Rather than
+        # thread it through as an SSM Send-Command extra-var (which would
+        # require changing converge.sh's frozen, fixed-literal command —
+        # see the "Shell command composition" threat-matrix row — for a
+        # value that isn't sensitive), grant the instance role read-only
+        # access to config/* too. No kms:Decrypt is added because config/*
+        # parameters are String, not SecureString.
+        Sid      = "SsmConfigRead"
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/config/*"
+      },
+      {
         Sid      = "KmsDecryptSsm"
         Effect   = "Allow"
         Action   = ["kms:Decrypt"]

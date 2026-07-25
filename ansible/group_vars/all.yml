@@ -4,10 +4,11 @@ aws_region: us-east-1
 app_dir: /opt/app
 compose_file: docker-compose.prod.yml
 
-# TODO(PR4): the instance role can only decrypt /url-shortener/secret/*
-# (see terraform/security.tf's aws_iam_role_policy.instance_secrets), not
-# read /url-shortener/config/public_base_url — granting that read is an
-# IAM change out of scope for this PR. Until PR4's converge trigger passes
-# an extra-var (or a future PR extends the instance role), override this at
-# convergence time with `-e cors_origin=https://<dist>.cloudfront.net`.
+# PR4 resolution: terraform/security.tf's aws_iam_role_policy.instance_secrets
+# now also grants the instance role read-only ssm:GetParameter* on
+# config/* (no kms:Decrypt needed, config/* is a plain String). The
+# `params` role reads /url-shortener/config/public_base_url at convergence
+# time into params_cors_origin (ansible-lint's var-naming rule requires
+# the role prefix); env.j2 falls back to this placeholder only if that
+# SSM read task is ever skipped or fails.
 cors_origin: "*"

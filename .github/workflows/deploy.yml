@@ -1,0 +1,199 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "ansible/**"
+      - "docker-compose.prod.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "658424926425"
+  DEPLOY_ROLE_ARN: arn:aws:iam::658424926425:role/url-shortener-github-actions-terraform
+  PROJECT_NAME: url-shortener
+  # Deterministic from terraform/frontend-cdn.tf's `${project_name}-frontend-${account_id}`
+  # naming; there is no SSM config/* parameter for it (only artifacts_bucket
+  # is published there), so it is derived here instead of adding a new
+  # Terraform-owned parameter for this PR alone.
+  FRONTEND_BUCKET: url-shortener-frontend-658424926425
+
+jobs:
+  backend-image:
+    name: Build and push backend image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  frontend:
+    name: Build and sync frontend to S3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Read public base URL from SSM config
+        id: config
+        run: |
+          url=$(aws ssm get-parameter \
+            --name "/${PROJECT_NAME}/config/public_base_url" \
+            --query Parameter.Value --output text)
+          echo "public_base_url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ steps.config.outputs.public_base_url }}
+        run: npm run build
+
+      - name: Sync hashed assets (immutable, long-lived cache)
+        run: |
+          aws s3 sync frontend/dist/assets "s3://${FRONTEND_BUCKET}/assets" \
+            --delete --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload index.html (no-cache, always revalidated)
+        run: |
+          aws s3 cp frontend/dist/index.html "s3://${FRONTEND_BUCKET}/index.html" \
+            --cache-control "no-cache"
+
+  invalidate-cdn:
+    name: Invalidate CloudFront cache
+    needs: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Invalidate SPA shell and index
+        run: |
+          distribution_id=$(aws ssm get-parameter \
+            --name "/${PROJECT_NAME}/config/distribution_id" \
+            --query Parameter.Value --output text)
+          aws cloudfront create-invalidation \
+            --distribution-id "$distribution_id" \
+            --paths "/" "/index.html"
+
+  ansible-bundle:
+    name: Bundle and upload Ansible convergence artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ansible/roles/app/tasks/main.yml resolves the compose file as
+      # `{{ playbook_dir }}/../docker-compose.prod.yml`. converge.sh
+      # (terraform/ec2.tf) extracts this bundle to /opt, so `ansible/`
+      # and `docker-compose.prod.yml` must be tarred as siblings at the
+      # bundle root: extraction yields /opt/ansible/site.yml and
+      # /opt/docker-compose.prod.yml, exactly one level above playbook_dir.
+      - name: Create bundle
+        run: tar -czf ansible-bundle.tar.gz ansible docker-compose.prod.yml
+
+      - name: Upload bundle to the artifacts bucket
+        run: |
+          artifacts_bucket=$(aws ssm get-parameter \
+            --name "/${PROJECT_NAME}/config/artifacts_bucket" \
+            --query Parameter.Value --output text)
+          aws s3 cp ansible-bundle.tar.gz "s3://${artifacts_bucket}/ansible/latest.tar.gz"
+
+  converge:
+    name: Trigger Ansible convergence via SSM
+    needs: [backend-image, ansible-bundle]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Send convergence command and wait for completion
+        run: |
+          set -euo pipefail
+          instance_id=$(aws ssm get-parameter \
+            --name "/${PROJECT_NAME}/config/instance_id" \
+            --query Parameter.Value --output text)
+
+          command_id=$(aws ssm send-command \
+            --instance-ids "$instance_id" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="/usr/local/bin/converge.sh" \
+            --query "Command.CommandId" --output text)
+
+          echo "Waiting for command $command_id on instance $instance_id..."
+          status="Pending"
+          while [ "$status" = "Pending" ] || [ "$status" = "InProgress" ] || [ "$status" = "Delayed" ]; do
+            sleep 10
+            status=$(aws ssm get-command-invocation \
+              --command-id "$command_id" \
+              --instance-id "$instance_id" \
+              --query "Status" --output text)
+            echo "Status: $status"
+          done
+
+          if [ "$status" != "Success" ]; then
+            echo "Convergence failed with status: $status" >&2
+            aws ssm get-command-invocation \
+              --command-id "$command_id" \
+              --instance-id "$instance_id" \
+              --query "StandardErrorContent" --output text >&2
+            exit 1
+          fi

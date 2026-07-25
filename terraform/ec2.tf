@@ -41,8 +41,8 @@ locals {
     #!/bin/bash
     set -euo pipefail
     aws s3 cp "s3://${aws_s3_bucket.artifacts.bucket}/ansible/latest.tar.gz" /tmp/ansible-bundle.tar.gz
-    rm -rf /opt/ansible/*
-    tar -xzf /tmp/ansible-bundle.tar.gz -C /opt/ansible
+    rm -rf /opt/ansible /opt/docker-compose.prod.yml
+    tar -xzf /tmp/ansible-bundle.tar.gz -C /opt
     ansible-playbook -i localhost, -c local /opt/ansible/site.yml
     CONVERGE
     chmod +x /usr/local/bin/converge.sh
