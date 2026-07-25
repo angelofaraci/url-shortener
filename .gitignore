@@ -42,3 +42,6 @@ k8s/secret.yaml
 aws/
 awscliv2.zip
 kubectl
+
+# Personal notes, not a project artifact
+GUIA-DEVOPS.md
