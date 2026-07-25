@@ -1,0 +1,13 @@
+---
+project_name: url-shortener
+aws_region: us-east-1
+app_dir: /opt/app
+compose_file: docker-compose.prod.yml
+
+# TODO(PR4): the instance role can only decrypt /url-shortener/secret/*
+# (see terraform/security.tf's aws_iam_role_policy.instance_secrets), not
+# read /url-shortener/config/public_base_url — granting that read is an
+# IAM change out of scope for this PR. Until PR4's converge trigger passes
+# an extra-var (or a future PR extends the instance role), override this at
+# convergence time with `-e cors_origin=https://<dist>.cloudfront.net`.
+cors_origin: "*"

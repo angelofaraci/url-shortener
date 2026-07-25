@@ -1,0 +1,25 @@
+---
+# The Tailscale client binary is already installed by the (frozen) PR2
+# user_data (`curl -fsSL https://tailscale.com/install.sh | sh`); this role
+# only owns joining the tailnet, guarded so a re-converge is a no-op.
+
+- name: Check current Tailscale connection status
+  ansible.builtin.command: tailscale status --json
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+
+- name: Determine whether the host is already joined to the tailnet
+  ansible.builtin.set_fact:
+    tailscale_already_up: >-
+      {{ tailscale_status.rc == 0 and
+         (tailscale_status.stdout | from_json).BackendState == 'Running' }}
+
+- name: Join the tailnet
+  ansible.builtin.command: >
+    tailscale up --authkey={{ params_ts_authkey }} --ssh
+    --hostname={{ project_name }}-app
+  when: not tailscale_already_up
+  no_log: true
+  register: tailscale_up
+  changed_when: true

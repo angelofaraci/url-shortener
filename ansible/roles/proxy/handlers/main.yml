@@ -1,0 +1,11 @@
+---
+# Only fires when nginx.conf actually changed, so a routine re-converge
+# with no config drift never restarts the proxy container. On a completely
+# fresh host this also fires once, harmlessly, right after the `app` role's
+# `docker compose up -d` already created the container with the correct
+# config baked in via the bind mount.
+- name: Restart the proxy container
+  ansible.builtin.command: docker compose -f {{ compose_file }} restart proxy
+  args:
+    chdir: "{{ app_dir }}"
+  changed_when: true

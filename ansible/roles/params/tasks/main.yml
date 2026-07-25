@@ -1,0 +1,44 @@
+---
+# This role is the ONLY thing on the host that decrypts SecureString SSM
+# parameters. Every task here MUST set no_log: true; a bug that leaks a
+# decrypted value into task output/stdout is the exact threat the design's
+# "Subprocess secret leakage" matrix row targets. Values are read via the
+# `aws` CLI (already required by converge.sh's own `aws s3 cp` call in
+# terraform/ec2.tf) rather than the `amazon.aws.aws_ssm` lookup plugin,
+# because the frozen PR2 user_data only installs `docker` + `ansible-core`
+# — it never installs boto3/botocore or the amazon.aws collection that the
+# lookup plugin needs. This is a deliberate deviation from the design doc's
+# literal wording, not a shortcut: it is the only secret-read path that
+# actually works against the bootstrap contract already provisioned.
+
+- name: Read runtime secrets from SSM Parameter Store (decrypted via the instance role)
+  ansible.builtin.command: >
+    aws ssm get-parameter
+    --name /{{ project_name }}/secret/{{ item }}
+    --with-decryption
+    --region {{ aws_region }}
+    --query Parameter.Value
+    --output text
+  loop:
+    - database_url
+    - origin_verify
+    - ts_authkey
+  register: params_ssm_secrets
+  no_log: true
+  changed_when: false
+
+- name: Map decrypted secrets to named facts
+  ansible.builtin.set_fact:
+    params_database_url: "{{ params_ssm_secrets.results[0].stdout }}"
+    params_origin_verify: "{{ params_ssm_secrets.results[1].stdout }}"
+    params_ts_authkey: "{{ params_ssm_secrets.results[2].stdout }}"
+  no_log: true
+
+- name: Write the backend runtime environment file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
