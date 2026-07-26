@@ -1,12 +1,14 @@
-import { LinkForm } from './components/LinkForm';
-import { StatsLookup } from './components/StatsLookup';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { AppLayout } from './layouts/AppLayout';
+import { CreateLinkPage } from './pages/CreateLinkPage';
 
 export function App() {
   return (
-    <main className="app">
-      <h1>URL Shortener</h1>
-      <LinkForm />
-      <StatsLookup />
-    </main>
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<CreateLinkPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
