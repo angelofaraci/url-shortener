@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { ApiError, createLink, buildShortUrl } from '../api';
+import { ApiError, createLink, shortUrlHost } from '../api';
 import type { Link } from '../types';
-import { LinkResult } from './LinkResult';
 
 function isValidUrl(value: string): boolean {
   // `new URL()` is the platform's own URL parser, so it accepts everything a
@@ -23,18 +22,23 @@ function datetimeLocalToIso(value: string): string {
   return new Date(value).toISOString();
 }
 
-export function LinkForm() {
+interface LinkFormProps {
+  onCreated: (link: Link) => void;
+}
+
+// Left card only (handoff screen 1). The result — shown in the right column —
+// is lifted to `CreateLinkPage` via `onCreated` so it can sit alongside
+// `WhatYouGetCard` instead of being nested inside this form's own card.
+export function LinkForm({ onCreated }: LinkFormProps) {
   const [url, setUrl] = useState('');
   const [alias, setAlias] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Link | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setResult(null);
 
     if (!isValidUrl(url)) {
       setError('Please enter a valid URL, including the protocol (e.g. https://example.com).');
@@ -48,7 +52,7 @@ export function LinkForm() {
         alias: alias.trim() || undefined,
         expiresAt: expiresAt ? datetimeLocalToIso(expiresAt) : undefined,
       });
-      setResult(link);
+      onCreated(link);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -61,8 +65,10 @@ export function LinkForm() {
   }
 
   return (
-    <section className="card">
-      <h2>Create a short link</h2>
+    <section className="create-card">
+      <h2 className="create-card__title">Create a short link</h2>
+      <p className="create-card__subtitle">Paste a long URL and get a tidy, trackable short code.</p>
+
       <form onSubmit={handleSubmit} className="form">
         <label className="field">
           <span>Long URL</span>
@@ -75,32 +81,44 @@ export function LinkForm() {
           />
         </label>
 
-        <label className="field">
-          <span>Custom alias (optional)</span>
-          <input
-            type="text"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            placeholder="my-alias"
-          />
-        </label>
+        <div className="field-row">
+          <label className="field">
+            <span>
+              Custom alias <span className="field__hint">optional</span>
+            </span>
+            <div className="alias-input">
+              <span className="alias-input__prefix">{shortUrlHost()}</span>
+              <input
+                type="text"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                placeholder="my-alias"
+              />
+            </div>
+          </label>
 
-        <label className="field">
-          <span>Expires at (optional)</span>
-          <input
-            type="datetime-local"
-            value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
-          />
-        </label>
+          <label className="field">
+            <span>Expires at</span>
+            <input
+              type="datetime-local"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+            />
+          </label>
+        </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Creating...' : 'Shorten'}
-        </button>
+        <div className="actions-row">
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Creating...' : 'Shorten'}
+          </button>
+          <span className="ttl-note">
+            <span className="ttl-note__dot" />
+            Anonymous links expire after 24h
+          </span>
+        </div>
       </form>
 
       {error && <p className="error">{error}</p>}
-      {result && <LinkResult shortUrl={buildShortUrl(result.code)} />}
     </section>
   );
 }
