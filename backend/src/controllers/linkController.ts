@@ -28,6 +28,7 @@ export async function createLink(req: Request, res: Response, next: NextFunction
         url: body.url,
         alias: body.alias,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+        userId: req.user?.id ?? null,
       },
       config.shortCodeLength,
     );
