@@ -149,24 +149,28 @@ resource "aws_iam_role_policy" "github_actions_terraform" {
         Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/*"
       },
       {
+        # ssm:DescribeParameters doesn't support resource-level scoping at
+        # all (AWS requires Resource "*" for it, unlike GetParameter/
+        # PutParameter above) — it's how the provider looks up parameter
+        # metadata during refresh.
+        Sid      = "SsmDescribeParams"
+        Effect   = "Allow"
+        Action   = ["ssm:DescribeParameters"]
+        Resource = "*"
+      },
+      {
         # frontend-cdn.tf + artifacts.tf: the frontend and artifacts S3
         # buckets and their sub-resource configuration (versioning, public
-        # access block, lifecycle, bucket policy) — separate from the
+        # access block, lifecycle, bucket policy, accelerate/encryption
+        # config the provider reads on every refresh) — separate from the
         # StateBucket grant above, which only covers the tfstate bucket.
+        # s3:* instead of enumerating individual Get/Put actions: S3's IAM
+        # action names are inconsistent (e.g. GetAccelerateConfiguration
+        # has no "Bucket" in the name despite being bucket-level), so a
+        # allow-list here would keep missing one action at a time.
         Sid    = "ProjectBucketsManage"
         Effect = "Allow"
-        Action = [
-          "s3:CreateBucket",
-          "s3:DeleteBucket",
-          "s3:GetBucket*",
-          "s3:PutBucket*",
-          "s3:GetLifecycleConfiguration",
-          "s3:PutLifecycleConfiguration",
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject",
-          "s3:ListBucket"
-        ]
+        Action = ["s3:*"]
         Resource = [
           "arn:aws:s3:::${var.project_name}-frontend-*",
           "arn:aws:s3:::${var.project_name}-frontend-*/*",
