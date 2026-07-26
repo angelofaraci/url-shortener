@@ -1,27 +1,9 @@
-:root {
-  color-scheme: light dark;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --bg: #f5f6f8;
-  --card-bg: #ffffff;
-  --text: #1a1a1a;
-  --muted: #6b7280;
-  --border: #d9dce1;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --error: #b91c1c;
-}
+@import './styles/tokens.css';
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #16171a;
-    --card-bg: #1f2124;
-    --text: #f0f0f0;
-    --muted: #9ca3af;
-    --border: #33363b;
-    --accent: #4f8dfd;
-    --accent-hover: #6ba0ff;
-    --error: #f87171;
-  }
+:root {
+  /* Alias kept for the existing card/form styles below, which PR2b restyles
+     to the handoff card set directly; --error maps to the token danger color. */
+  --error: var(--danger);
 }
 
 * {
@@ -171,4 +153,196 @@ th {
 .stats__empty {
   color: var(--muted);
   text-align: center;
+}
+
+/* --- App shell (PR2a): sidebar + sticky header, persistent on every route --- */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-shell__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-shell__content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 30px;
+}
+
+.sidebar {
+  width: 236px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-subtle);
+  padding: 22px 14px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 20px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.logo__square {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(76, 141, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.logo__suffix {
+  color: var(--placeholder);
+  font-weight: 700;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  text-decoration: none;
+  background: transparent;
+  color: var(--muted-2);
+  font-weight: 500;
+}
+
+.nav-item:hover {
+  background: var(--nav-hover-bg);
+}
+
+.nav-item--active {
+  background: var(--nav-active-bg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.nav-item--disabled {
+  cursor: not-allowed;
+  color: var(--placeholder);
+}
+
+.nav-item--disabled:hover {
+  background: transparent;
+}
+
+.nav-item__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.region-card {
+  margin-top: auto;
+  background: var(--card-bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  padding: 12px 13px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.region-card__line {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.region-card__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+.region-card__region {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.region-card__runtime {
+  margin: 0;
+}
+
+.header {
+  height: 62px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 30px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(14, 17, 22, 0.82);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header__title {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0;
+}
+
+.header__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg-subtle);
+  border: 1px solid var(--border-pill);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 12px;
+  color: var(--muted-2);
+  font-family: var(--font-mono);
+}
+
+.api-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+.user-menu-placeholder {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  opacity: 0.35;
 }
