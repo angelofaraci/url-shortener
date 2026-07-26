@@ -34,7 +34,9 @@ resource "aws_db_instance" "main" {
   # data transfer charges.
   availability_zone = aws_instance.app.availability_zone
 
-  backup_retention_period   = 7
+  # Free-tier/trial AWS accounts cap automated backup retention below the
+  # usual default of 7 days; 1 still gets automated backups enabled.
+  backup_retention_period   = 1
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.project_name}-db-final-snapshot"
 
