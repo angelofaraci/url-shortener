@@ -24,12 +24,13 @@ function datetimeLocalToIso(value: string): string {
 
 interface LinkFormProps {
   onCreated: (link: Link) => void;
+  onSubmitStart: () => void;
 }
 
 // Left card only (handoff screen 1). The result — shown in the right column —
 // is lifted to `CreateLinkPage` via `onCreated` so it can sit alongside
 // `WhatYouGetCard` instead of being nested inside this form's own card.
-export function LinkForm({ onCreated }: LinkFormProps) {
+export function LinkForm({ onCreated, onSubmitStart }: LinkFormProps) {
   const [url, setUrl] = useState('');
   const [alias, setAlias] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -39,6 +40,7 @@ export function LinkForm({ onCreated }: LinkFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    onSubmitStart();
 
     if (!isValidUrl(url)) {
       setError('Please enter a valid URL, including the protocol (e.g. https://example.com).');

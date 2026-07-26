@@ -1,4 +1,4 @@
-import type { Link, StatsResponse } from '../types';
+import type { Link, SessionUser, StatsResponse } from '../types';
 
 // Read only from import.meta.env — never hardcode the backend origin in source,
 // since the short URL shown to the user is built client-side as `${baseUrl}/${code}`.
@@ -40,6 +40,7 @@ export async function createLink(payload: CreateLinkPayload): Promise<Link> {
   const response = await fetch(`${baseUrl}/api/links`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload),
   });
 
@@ -57,7 +58,9 @@ export async function createLink(payload: CreateLinkPayload): Promise<Link> {
 }
 
 export async function getStats(code: string): Promise<StatsResponse> {
-  const response = await fetch(`${baseUrl}/api/links/${encodeURIComponent(code)}/stats`);
+  const response = await fetch(`${baseUrl}/api/links/${encodeURIComponent(code)}/stats`, {
+    credentials: 'include',
+  });
 
   if (response.status === 404) {
     throw new ApiError(await parseErrorMessage(response, 'No link found for that code.'), 404);
@@ -77,4 +80,29 @@ export function buildShortUrl(code: string): string {
 // never shows the design handoff's fictional "shrt.link" domain.
 export function shortUrlHost(): string {
   return `${new URL(baseUrl).host}/`;
+}
+
+// GET /auth/me always returns 200 (never 401): `{ user: null }` for anonymous
+// requests. `credentials: 'include'` is required so the `sid` cookie is sent.
+export async function getMe(): Promise<SessionUser | null> {
+  const response = await fetch(`${baseUrl}/auth/me`, { credentials: 'include' });
+
+  if (!response.ok) {
+    // Treat any unexpected failure as anonymous rather than throwing — auth
+    // must never block the rest of the app from rendering.
+    return null;
+  }
+
+  const body = (await response.json()) as { user: SessionUser | null };
+  return body.user;
+}
+
+export async function logout(): Promise<void> {
+  await fetch(`${baseUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
+}
+
+// Builds the `GET /auth/google` URL, preserving the current path as `returnTo`
+// so the post-login redirect lands back where the user started.
+export function googleSignInUrl(returnTo: string): string {
+  return `${baseUrl}/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
 }

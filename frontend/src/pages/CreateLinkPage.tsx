@@ -12,7 +12,7 @@ export function CreateLinkPage() {
 
   return (
     <div className="create-grid">
-      <LinkForm onCreated={setResult} />
+      <LinkForm onCreated={setResult} onSubmitStart={() => setResult(null)} />
       <div className="create-side">
         {result && <LinkResult shortUrl={buildShortUrl(result.code)} longUrl={result.url} />}
         <WhatYouGetCard />
