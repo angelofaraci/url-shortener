@@ -97,6 +97,82 @@ resource "aws_iam_role_policy" "github_actions_terraform" {
           "arn:aws:s3:::${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}",
           "arn:aws:s3:::${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}/*"
         ]
+      },
+      {
+        # rds.tf: aws_db_instance, aws_db_subnet_group. RDS's resource-level
+        # permissions are inconsistent across actions (many Describe/List
+        # calls only work with Resource "*"), so this mirrors Ec2Manage's
+        # broad grant rather than fighting that.
+        Sid      = "RdsManage"
+        Effect   = "Allow"
+        Action   = ["rds:*"]
+        Resource = "*"
+      },
+      {
+        # frontend-cdn.tf: aws_cloudfront_distribution, aws_cloudfront_origin_access_control
+        Sid      = "CloudfrontManage"
+        Effect   = "Allow"
+        Action   = ["cloudfront:*"]
+        Resource = "*"
+      },
+      {
+        # security.tf: data.aws_kms_alias.ssm — read-only lookup of the
+        # AWS-managed SSM key alias, only supports Resource "*".
+        Sid      = "KmsRead"
+        Effect   = "Allow"
+        Action   = ["kms:ListAliases", "kms:DescribeKey"]
+        Resource = "*"
+      },
+      {
+        # oidc.tf: aws_iam_openid_connect_provider itself. Missing before —
+        # this role manages the very provider it authenticates through.
+        Sid    = "OidcProviderManage"
+        Effect = "Allow"
+        Action = [
+          "iam:GetOpenIDConnectProvider",
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint"
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+      },
+      {
+        # ssm.tf: full parameter lifecycle under this project's namespace,
+        # both config/* and secret/* — Terraform itself owns these, which
+        # is broader than the narrower read-only carve-outs granted to the
+        # instance role (secret/*) and the deploy role (config/* only).
+        Sid      = "SsmParamsManage"
+        Effect   = "Allow"
+        Action   = ["ssm:*"]
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/*"
+      },
+      {
+        # frontend-cdn.tf + artifacts.tf: the frontend and artifacts S3
+        # buckets and their sub-resource configuration (versioning, public
+        # access block, lifecycle, bucket policy) — separate from the
+        # StateBucket grant above, which only covers the tfstate bucket.
+        Sid    = "ProjectBucketsManage"
+        Effect = "Allow"
+        Action = [
+          "s3:CreateBucket",
+          "s3:DeleteBucket",
+          "s3:GetBucket*",
+          "s3:PutBucket*",
+          "s3:GetLifecycleConfiguration",
+          "s3:PutLifecycleConfiguration",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.project_name}-frontend-*",
+          "arn:aws:s3:::${var.project_name}-frontend-*/*",
+          "arn:aws:s3:::${var.project_name}-artifacts-*",
+          "arn:aws:s3:::${var.project_name}-artifacts-*/*"
+        ]
       }
     ]
   })
