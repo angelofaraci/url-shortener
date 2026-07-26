@@ -17,7 +17,7 @@ concurrency:
 
 env:
   AWS_REGION: us-east-1
-  TF_ROLE_ARN: arn:aws:iam::658424926425:role/url-shortener-github-actions-terraform
+  TF_ROLE_ARN: ${{ vars.TF_ROLE_ARN }}
 
 jobs:
   terraform:

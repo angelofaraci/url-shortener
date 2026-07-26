@@ -19,14 +19,14 @@ concurrency:
 
 env:
   AWS_REGION: us-east-1
-  AWS_ACCOUNT_ID: "658424926425"
-  DEPLOY_ROLE_ARN: arn:aws:iam::658424926425:role/url-shortener-github-actions-terraform
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  DEPLOY_ROLE_ARN: ${{ vars.DEPLOY_ROLE_ARN }}
   PROJECT_NAME: url-shortener
   # Deterministic from terraform/frontend-cdn.tf's `${project_name}-frontend-${account_id}`
   # naming; there is no SSM config/* parameter for it (only artifacts_bucket
   # is published there), so it is derived here instead of adding a new
   # Terraform-owned parameter for this PR alone.
-  FRONTEND_BUCKET: url-shortener-frontend-658424926425
+  FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
 
 jobs:
   backend-image:
