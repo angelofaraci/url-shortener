@@ -36,9 +36,12 @@ resource "aws_db_instance" "main" {
 
   # Free-tier/trial AWS accounts cap automated backup retention below the
   # usual default of 7 days; 1 still gets automated backups enabled.
-  backup_retention_period   = 1
-  skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.project_name}-db-final-snapshot"
+  backup_retention_period = 1
+  skip_final_snapshot     = false
+  # Timestamped so a second destroy (e.g. another instance replacement
+  # cascading an AZ change here) doesn't collide with a snapshot left
+  # over from a previous destroy under the same static name.
+  final_snapshot_identifier = "${var.project_name}-db-final-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
 
   tags = {
     Name = "${var.project_name}-db"
