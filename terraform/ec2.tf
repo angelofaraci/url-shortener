@@ -18,12 +18,14 @@ data "aws_ami" "amazon_linux" {
 # convergence bundle from the artifacts bucket and runs it. All host
 # state (compose stack, nginx proxy, Tailscale join) is applied by that
 # Ansible playbook, implemented in ansible/site.yml and its roles, not
-# here. Amazon Linux 2023 already ships the SSM agent enabled by default,
-# so there is no separate SSM agent install step.
+# here. Amazon Linux 2023 ships the SSM agent pre-installed but not
+# reliably started on first boot, so it's force-enabled explicitly below
+# instead of relying on that assumption.
 locals {
   user_data = <<-EOF
     #!/bin/bash
     set -euo pipefail
+    systemctl enable --now amazon-ssm-agent
     dnf update -y
     dnf install -y docker ansible-core
     systemctl enable --now docker
