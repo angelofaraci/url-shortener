@@ -7,13 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  googleId  String   @unique
+  email     String
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  links     Link[]
+}
+
 model Link {
   id        String    @id @default(cuid())
   code      String    @unique
   url       String
   expiresAt DateTime?
   createdAt DateTime  @default(now())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   clicks    Click[]
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model Click {

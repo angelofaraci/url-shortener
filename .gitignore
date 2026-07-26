@@ -45,3 +45,7 @@ kubectl
 
 # Personal notes, not a project artifact
 GUIA-DEVOPS.md
+OAUTH-GUIA.md
+
+# Design reference handoff, not production code
+App AWS con navegación lateral/

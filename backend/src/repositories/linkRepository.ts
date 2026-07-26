@@ -5,6 +5,7 @@ export interface CreateLinkRecord {
   code: string;
   url: string;
   expiresAt: Date | null;
+  userId: string | null;
 }
 
 export const linkRepository = {

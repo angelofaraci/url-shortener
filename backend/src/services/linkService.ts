@@ -26,10 +26,13 @@ function isUniqueConstraintViolation(error: unknown): boolean {
 export const linkService = {
   async createLink(input: CreateLinkInput, shortCodeLength: number): Promise<Link> {
     const expiresAt = input.expiresAt ?? null;
+    // D5: ownership is decided once, at creation time, from the authenticated
+    // request's session. It is never reassigned by a later login (no claiming).
+    const userId = input.userId ?? null;
 
     if (input.alias) {
       try {
-        return await linkRepository.create({ code: input.alias, url: input.url, expiresAt });
+        return await linkRepository.create({ code: input.alias, url: input.url, expiresAt, userId });
       } catch (error) {
         if (isUniqueConstraintViolation(error)) {
           throw new AliasTakenError(input.alias);
@@ -43,7 +46,7 @@ export const linkService = {
     for (let attempt = 0; attempt < MAX_CODE_GENERATION_ATTEMPTS; attempt++) {
       const code = generateRandomCode(shortCodeLength);
       try {
-        return await linkRepository.create({ code, url: input.url, expiresAt });
+        return await linkRepository.create({ code, url: input.url, expiresAt, userId });
       } catch (error) {
         if (isUniqueConstraintViolation(error)) {
           continue;
