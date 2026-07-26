@@ -72,3 +72,9 @@ export async function getStats(code: string): Promise<StatsResponse> {
 export function buildShortUrl(code: string): string {
   return `${baseUrl}/${code}`;
 }
+
+// Real backend host, used as the alias-input prefix so the Create screen
+// never shows the design handoff's fictional "shrt.link" domain.
+export function shortUrlHost(): string {
+  return `${new URL(baseUrl).host}/`;
+}
