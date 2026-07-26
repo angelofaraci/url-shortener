@@ -8,6 +8,7 @@ on:
       - "frontend/**"
       - "ansible/**"
       - "docker-compose.prod.yml"
+  workflow_dispatch: {}
 
 permissions:
   id-token: write
