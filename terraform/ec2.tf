@@ -18,16 +18,16 @@ data "aws_ami" "amazon_linux" {
 # convergence bundle from the artifacts bucket and runs it. All host
 # state (compose stack, nginx proxy, Tailscale join) is applied by that
 # Ansible playbook, implemented in ansible/site.yml and its roles, not
-# here. Amazon Linux 2023 ships the SSM agent pre-installed but not
-# reliably started on first boot, so it's force-enabled explicitly below
-# instead of relying on that assumption.
+# here. This AMI does not ship the SSM agent pre-installed (confirmed via
+# console output: "Unit file amazon-ssm-agent.service does not exist"),
+# so it's installed and enabled explicitly instead of assuming it.
 locals {
   user_data = <<-EOF
     #!/bin/bash
     set -euo pipefail
-    systemctl enable --now amazon-ssm-agent
     dnf update -y
-    dnf install -y docker ansible-core
+    dnf install -y docker ansible-core amazon-ssm-agent
+    systemctl enable --now amazon-ssm-agent
     systemctl enable --now docker
 
     mkdir -p /usr/local/lib/docker/cli-plugins
