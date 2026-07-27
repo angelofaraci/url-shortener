@@ -72,7 +72,7 @@ export function MyLinksPage() {
           {(links ?? []).map((link) => (
             <li key={link.code} className="stats-clicks__item my-links__row">
               <span>
-                <Link to="/stats" className="result-card__url">
+                <Link to={`/stats/${encodeURIComponent(link.code)}`} className="result-card__url">
                   {buildShortUrl(link.code)}
                 </Link>
                 <span className="result-card__dest">{link.url}</span>
