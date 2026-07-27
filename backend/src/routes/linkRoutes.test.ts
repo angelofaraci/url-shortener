@@ -111,11 +111,12 @@ describe('GET /api/links', () => {
   });
 
   it('does not shadow the existing GET /api/links/:code/stats route', async () => {
+    vi.mocked(sessionService.get).mockResolvedValueOnce(OWNER);
     prismaMock.link.findUnique.mockResolvedValueOnce(ownerLinks[0]);
     prismaMock.click.count.mockResolvedValueOnce(3);
     prismaMock.click.findMany.mockResolvedValueOnce([]);
 
-    const statsRes = await request(app).get('/api/links/aaa/stats');
+    const statsRes = await request(app).get('/api/links/aaa/stats').set('Cookie', SESSION_COOKIE);
     const listRes = await request(app).get('/api/links');
 
     expect(statsRes.status).toBe(200);

@@ -71,7 +71,16 @@ export async function listMyLinks(req: Request, res: Response, next: NextFunctio
 export async function getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { code } = req.params;
-    const stats = await statsService.getStatsByCode(code);
+
+    // Owner scope comes only from req.ownerScope (session-derived by sessionGate).
+    // No session → 404, matching the not-found/not-owned case below, so the
+    // response never reveals whether a code exists to an unauthenticated caller.
+    if (!req.ownerScope?.authenticated || !req.ownerScope.userId) {
+      next(new HttpError(404, `No link found for code "${code}"`));
+      return;
+    }
+
+    const stats = await statsService.getStatsByCode(code, req.ownerScope.userId);
 
     if (!stats) {
       next(new HttpError(404, `No link found for code "${code}"`));
