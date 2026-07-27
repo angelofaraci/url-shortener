@@ -14,9 +14,11 @@ export const statsService = {
     await clickRepository.create({ linkId, referrer, userAgent });
   },
 
-  async getStatsByCode(code: string): Promise<LinkStats | null> {
+  async getStatsByCode(code: string, userId: string): Promise<LinkStats | null> {
     const link = await linkRepository.findByCode(code);
-    if (!link) {
+    // link.userId !== userId also excludes anonymous links (userId: null),
+    // since null never strictly equals a string userId.
+    if (!link || link.userId !== userId) {
       return null;
     }
 

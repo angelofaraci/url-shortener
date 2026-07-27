@@ -1,0 +1,45 @@
+/* Design tokens from the handoff (App AWS con navegación lateral/design_handoff_url_shortener/README.md).
+   Dark-only by design (D10) — this app has no light-mode variant. */
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Backgrounds */
+  --bg: #0e1116;
+  --card-bg: #171b22;
+  --card-bg-subtle: #141a22;
+  --input-bg: #0f1319;
+  --nav-active-bg: #1a212b;
+  --nav-hover-bg: #171d26;
+
+  /* Borders */
+  --border: #222833;
+  --border-subtle: #1c222c;
+  --border-subtle-2: #171d26;
+  --border-input: #2a313d;
+  --border-pill: #232b37;
+  --border-accent-card: #2b3646;
+
+  /* Text */
+  --text: #e8eaed;
+  --text-secondary: #c2c9d4;
+  --text-secondary-2: #dfe3e9;
+  --muted: #8b95a3;
+  --muted-2: #9aa4b2;
+  --faint: #6b7684;
+  --placeholder: #5a6473;
+
+  /* Accents */
+  --accent: #4c8dff;
+  --accent-hover: #3d7bf0;
+  --accent-link: #6ea3ff;
+  --purple: #8a63e8;
+
+  /* Semantic */
+  --success: #3fb950;
+  --success-bg: rgba(63, 185, 80, 0.12);
+  --warn: #d9a441;
+  --warn-bg: rgba(217, 164, 65, 0.12);
+  --danger: #e5645f;
+}

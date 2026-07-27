@@ -1,0 +1,44 @@
+# Runs the anonymous-link cleanup job on a schedule in cluster deployments.
+# Same image as the backend Deployment (and backend-migrate Job), command
+# overridden to run the CLI entry instead of starting the server.
+# Apply manually: kubectl apply -f k8s/cleanup-cronjob.yaml
+#
+# NOTE: leave ANON_CLEANUP_ENABLED="false" in k8s/configmap.yaml when this
+# CronJob is applied — it is the preferred runtime for k8s deployments, and the
+# in-process interval (server.ts) exists only for docker-compose/single-process
+# setups. Enabling both would run cleanup twice.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backend-cleanup-anonymous-links
+  namespace: url-shortener
+  labels:
+    app.kubernetes.io/name: backend-cleanup-anonymous-links
+spec:
+  schedule: "17 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: backend-cleanup-anonymous-links
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: cleanup
+              image: url-shortener-backend:latest
+              imagePullPolicy: IfNotPresent
+              command: ["node", "dist/jobs/cleanup.js"]
+              envFrom:
+                - configMapRef:
+                    name: app-config
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: app-secret
+                      key: DATABASE_URL
