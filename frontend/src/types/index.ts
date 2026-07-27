@@ -23,3 +23,15 @@ export interface StatsResponse {
   totalClicks: number;
   recentClicks: ClickStat[];
 }
+
+export interface MyLink {
+  code: string;
+  url: string;
+  expiresAt: string | null;
+  createdAt: string;
+  totalClicks: number;
+}
+
+export type MyLinksResponse =
+  | { authenticated: false; links: [] }
+  | { authenticated: true; links: MyLink[] };

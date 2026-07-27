@@ -1,4 +1,4 @@
-import type { Link, SessionUser, StatsResponse } from '../types';
+import type { Link, MyLinksResponse, SessionUser, StatsResponse } from '../types';
 
 // Read only from import.meta.env — never hardcode the backend origin in source,
 // since the short URL shown to the user is built client-side as `${baseUrl}/${code}`.
@@ -70,6 +70,19 @@ export async function getStats(code: string): Promise<StatsResponse> {
   }
 
   return (await response.json()) as StatsResponse;
+}
+
+// GET /api/links always returns 200 (never 401): `{ authenticated: false, links: [] }`
+// for anonymous requests. `credentials: 'include'` is required so the session
+// cookie is sent — owner scope is derived server-side, never from a query param.
+export async function listMyLinks(): Promise<MyLinksResponse> {
+  const response = await fetch(`${baseUrl}/api/links`, { credentials: 'include' });
+
+  if (!response.ok) {
+    throw new ApiError(await parseErrorMessage(response, 'Failed to fetch your links.'), response.status);
+  }
+
+  return (await response.json()) as MyLinksResponse;
 }
 
 export function buildShortUrl(code: string): string {

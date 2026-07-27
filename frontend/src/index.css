@@ -248,6 +248,31 @@ button {
   color: var(--muted);
 }
 
+.stats-clicks__total {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.stats-clicks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stats-clicks__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
 .copy-btn {
   background: #1e2632;
   border: 1px solid #2f3a48;
@@ -566,3 +591,17 @@ button {
   border-color: var(--accent);
   color: var(--text);
 }
+
+/* --- My links screen (PR2, my-links-screen) --- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.my-links__row {
+  align-items: center;
+}
+
