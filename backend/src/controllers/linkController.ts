@@ -52,6 +52,22 @@ export async function createLink(req: Request, res: Response, next: NextFunction
   }
 }
 
+export async function listMyLinks(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    // Owner scope comes only from req.ownerScope (session-derived by sessionGate).
+    // Request-supplied values (query/body/headers) are never read for ownership.
+    if (!req.ownerScope?.authenticated || !req.ownerScope.userId) {
+      res.status(200).json({ authenticated: false, links: [] });
+      return;
+    }
+
+    const links = await linkService.listByUser(req.ownerScope.userId);
+    res.status(200).json({ authenticated: true, links });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { code } = req.params;

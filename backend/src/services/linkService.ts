@@ -1,7 +1,16 @@
 import { Prisma } from '@prisma/client';
 import { linkRepository } from '../repositories/linkRepository.js';
+import { clickRepository } from '../repositories/clickRepository.js';
 import { generateRandomCode } from '../utils/codeGenerator.js';
 import type { CreateLinkInput, Link } from '../domain/link.js';
+
+export interface OwnedLink {
+  code: string;
+  url: string;
+  expiresAt: Date | null;
+  createdAt: Date;
+  totalClicks: number;
+}
 
 const MAX_CODE_GENERATION_ATTEMPTS = 5;
 
@@ -60,6 +69,22 @@ export const linkService = {
 
   async getByCode(code: string): Promise<Link | null> {
     return linkRepository.findByCode(code);
+  },
+
+  // N+1 click counts under a single Promise.all: reuses the same repository
+  // method statsService already uses, and preserves findByUserId's ordering.
+  async listByUser(userId: string): Promise<OwnedLink[]> {
+    const links = await linkRepository.findByUserId(userId);
+
+    return Promise.all(
+      links.map(async (link) => ({
+        code: link.code,
+        url: link.url,
+        expiresAt: link.expiresAt,
+        createdAt: link.createdAt,
+        totalClicks: await clickRepository.countByLinkId(link.id),
+      })),
+    );
   },
 
   isExpired(link: Link): boolean {
