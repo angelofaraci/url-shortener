@@ -9,10 +9,19 @@ import { authRoutes } from './routes/authRoutes.js';
 import { redirectRoutes } from './routes/redirectRoutes.js';
 import { requestLogger } from './middlewares/requestLogger.js';
 import { optionalSession } from './middlewares/optionalSession.js';
+import { generalRateLimiter } from './middlewares/rateLimiter.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 export function createApp(): Express {
   const app = express();
+
+  // Trust exactly one hop: the ingress-nginx reverse proxy in front of this
+  // service (see k8s/ingress.yaml), not a blind `true`. This makes req.ip
+  // reflect the real client IP from X-Forwarded-For for rate limiting below —
+  // without it, all anonymous traffic buckets under the proxy's single IP
+  // (locking everyone out together), and a bare `true` would trust an
+  // attacker-supplied X-Forwarded-For chain instead of just the proxy's hop.
+  app.set('trust proxy', 1);
 
   app.use(helmet());
   app.use(cors({ origin: config.corsOrigin, credentials: true }));
@@ -21,8 +30,17 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(optionalSession);
 
-  app.use('/api/links', linkRoutes);
+  // Registered before the global rate limiter (and before every other route)
+  // so k8s liveness/readiness probes are exempt by construction — they never
+  // pass through generalRateLimiter and never touch Redis for it. Route order
+  // is used here instead of a `skip` option since it needs no per-request path
+  // check and mirrors how this file already uses ordering for /auth vs the
+  // "/:code" catch-all below.
   app.use('/health', healthRoutes);
+
+  app.use(generalRateLimiter);
+
+  app.use('/api/links', linkRoutes);
   // Must be registered before the "/:code" catch-all below, or /auth/me would be
   // shadowed and misinterpreted as a lookup for short code "auth".
   app.use('/auth', authRoutes);

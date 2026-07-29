@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
+import { createFakeRateLimitRedis } from '../test/fakeRateLimitRedis.js';
+
+// createApp() now wires a Redis-backed rate limiter on every route (see
+// src/middlewares/rateLimiter.ts). No real Redis is reachable in this
+// sandbox/test environment, so — matching how every other integration test in
+// this repo already mocks '../lib/redis.js' (see sessionService.test.ts) —
+// this fakes the shared client rather than hitting the network.
+const redisMock = createFakeRateLimitRedis();
+vi.mock('../lib/redis.js', () => ({ redis: redisMock }));
 
 vi.mock('../services/sessionService.js', () => ({
   sessionService: {
@@ -28,6 +37,7 @@ const app = createApp();
 describe('auth routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    redisMock.reset();
   });
 
   describe('route ordering (threat matrix: catch-all shadowing)', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
+import { createFakeRateLimitRedis } from '../test/fakeRateLimitRedis.js';
 
 const prismaMock = {
   link: { create: vi.fn(), findUnique: vi.fn(), findMany: vi.fn() },
@@ -7,6 +8,14 @@ const prismaMock = {
 };
 
 vi.mock('../lib/prisma.js', () => ({ prisma: prismaMock }));
+
+// createApp() now wires a Redis-backed rate limiter on every route (see
+// src/middlewares/rateLimiter.ts). No real Redis is reachable in this
+// sandbox/test environment, so — matching how every other integration test in
+// this repo already mocks '../lib/redis.js' (see sessionService.test.ts) —
+// this fakes the shared client rather than hitting the network.
+const redisMock = createFakeRateLimitRedis();
+vi.mock('../lib/redis.js', () => ({ redis: redisMock }));
 
 vi.mock('../services/sessionService.js', () => ({
   sessionService: {
@@ -50,6 +59,7 @@ function fakeFindMany({ where }: { where: { userId: string } }) {
 describe('GET /api/links', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    redisMock.reset();
   });
 
   it('returns 200 with owned links and correct totalClicks for an authenticated user', async () => {
