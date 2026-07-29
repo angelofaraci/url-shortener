@@ -31,8 +31,16 @@ resource "aws_db_instance" "main" {
 
   # Pinned to the same AZ as aws_instance.app (direct reference, not a
   # parallel data-source lookup) to avoid cross-AZ latency and inter-AZ
-  # data transfer charges.
+  # data transfer charges. Ignored after creation: any future replacement
+  # of aws_instance.app would otherwise cascade into replacing this DB too
+  # (its availability_zone becomes "known after apply" as soon as the
+  # instance it references is tainted) — that coupling destroyed prod data
+  # on 2026-07-29. The DB keeps whichever AZ it was created in.
   availability_zone = aws_instance.app.availability_zone
+
+  lifecycle {
+    ignore_changes = [availability_zone]
+  }
 
   # Free-tier/trial AWS accounts cap automated backup retention below the
   # usual default of 7 days; 1 still gets automated backups enabled.

@@ -76,7 +76,18 @@ resource "aws_instance" "app" {
   user_data              = local.user_data
 
   root_block_device {
-    volume_size = 20
+    volume_size = 30
+  }
+
+  # `data.aws_ami.amazon_linux` re-resolves to whatever AMI AWS publishes
+  # most recently on every plan. Without this, an unrelated apply run can
+  # pick up a newer AMI and force-replace this instance — which then
+  # cascades into replacing aws_db_instance.main too, since its
+  # availability_zone is a direct reference to this instance's AZ (see
+  # rds.tf). Replace the AMI deliberately (taint or bump manually) instead
+  # of letting drift decide it.
+  lifecycle {
+    ignore_changes = [ami]
   }
 
   tags = {
