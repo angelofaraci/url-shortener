@@ -10,9 +10,11 @@ const envSchema = z.object({
   SHORT_CODE_LENGTH: z.coerce.number().int().positive().default(6),
   // Google OAuth is an optional capability: all three are absent in most deployments
   // and every consumer must degrade gracefully (see authService.isConfigured()).
-  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
-  GOOGLE_REDIRECT_URI: z.string().min(1).optional(),
+  // Compose forwards these as "" (not omitted) when unset in .env, so blank must be
+  // treated the same as absent rather than failing validation.
+  GOOGLE_CLIENT_ID: z.string().min(1).optional().or(z.literal('').transform(() => undefined)),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional().or(z.literal('').transform(() => undefined)),
+  GOOGLE_REDIRECT_URI: z.string().min(1).optional().or(z.literal('').transform(() => undefined)),
   APP_BASE_URL: z.string().min(1).default('http://localhost:5173'),
   SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(604800),
   SESSION_COOKIE_NAME: z.string().min(1).default('sid'),
