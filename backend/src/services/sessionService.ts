@@ -5,7 +5,7 @@ import type { SessionUser } from '../domain/user.js';
 
 const SESSION_PREFIX = 'sess:';
 const STATE_PREFIX = 'oauth_state:';
-const STATE_TTL_SECONDS = 600;
+export const STATE_TTL_SECONDS = 600;
 
 function sessionKey(id: string): string {
   return `${SESSION_PREFIX}${id}`;

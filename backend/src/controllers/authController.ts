@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { config } from '../config/index.js';
 import { authService } from '../services/authService.js';
 import { googleOAuthService } from '../services/googleOAuthService.js';
-import { sessionService } from '../services/sessionService.js';
+import { sessionService, STATE_TTL_SECONDS } from '../services/sessionService.js';
 import { logger } from '../lib/logger.js';
 import { HttpError } from '../utils/httpError.js';
 
@@ -16,6 +16,23 @@ function cookieOptions(maxAgeMs?: number) {
     secure: config.nodeEnv === 'production',
     path: '/',
     ...(maxAgeMs !== undefined ? { maxAge: maxAgeMs } : {}),
+  };
+}
+
+const OAUTH_STATE_COOKIE = 'oauth_state';
+
+// RFC 6749 §10.12: `state` only defends against login CSRF when it's bound to the
+// browser that started the flow — checking it exists in Redis alone isn't enough,
+// since an attacker can relay their own valid code+state to a victim's browser.
+// This cookie carries that binding. Scoped to the callback path only (it has no
+// purpose anywhere else), and its lifetime mirrors the Redis-side state TTL.
+function oauthStateCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: config.nodeEnv === 'production',
+    path: '/auth/google/callback',
+    maxAge: STATE_TTL_SECONDS * 1000,
   };
 }
 
@@ -45,6 +62,7 @@ export async function startGoogleLogin(req: Request, res: Response, next: NextFu
 
     const returnTo = sanitizeReturnTo(req.query.returnTo as string | undefined);
     const state = await sessionService.putState(returnTo);
+    res.cookie(OAUTH_STATE_COOKIE, state, oauthStateCookieOptions());
     res.redirect(302, googleOAuthService.buildAuthUrl(state));
   } catch (error) {
     next(error);
@@ -55,8 +73,14 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
   try {
     const code = req.query.code as string | undefined;
     const state = req.query.state as string | undefined;
+    const stateCookie = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
 
-    if (!code || !state) {
+    // Single-use, mirroring the Redis-side GETDEL below: this cookie has done its
+    // job the moment we've read it, so it's cleared unconditionally regardless of
+    // what happens next.
+    res.clearCookie(OAUTH_STATE_COOKIE, { path: '/auth/google/callback' });
+
+    if (!code || !state || !stateCookie || stateCookie !== state) {
       authErrorRedirect(res, 'state');
       return;
     }
