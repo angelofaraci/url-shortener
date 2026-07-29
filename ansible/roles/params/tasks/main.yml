@@ -48,6 +48,41 @@
   ansible.builtin.set_fact:
     params_cors_origin: "{{ params_public_base_url.stdout }}"
 
+# Google OAuth is optional (design D4): these SSM parameters may not exist yet,
+# so failures here must not fail the play — an empty client_id/secret keeps
+# authService.isConfigured() false and /auth/google returns its intended 503.
+- name: Read optional Google OAuth secrets from SSM Parameter Store
+  ansible.builtin.command: >
+    aws ssm get-parameter
+    --name /{{ project_name }}/secret/{{ item }}
+    --with-decryption
+    --region {{ aws_region }}
+    --query Parameter.Value
+    --output text
+  loop:
+    - google_client_id
+    - google_client_secret
+  register: params_google_secrets
+  no_log: true
+  changed_when: false
+  failed_when: false
+
+- name: Map decrypted Google OAuth secrets to named facts (placeholder counts as unset)
+  ansible.builtin.set_fact:
+    params_google_client_id: "{{ params_google_secrets.results[0].stdout }}"
+    params_google_client_secret: "{{ params_google_secrets.results[1].stdout }}"
+  no_log: true
+  when:
+    - params_google_secrets.results[0].rc == 0
+    - params_google_secrets.results[1].rc == 0
+    - params_google_secrets.results[0].stdout != 'placeholder-set-manually'
+    - params_google_secrets.results[1].stdout != 'placeholder-set-manually'
+
+- name: Derive the Google OAuth redirect URI from the same public base URL used for CORS
+  ansible.builtin.set_fact:
+    params_google_redirect_uri: "{{ params_public_base_url.stdout }}/auth/google/callback"
+  when: params_google_client_id is defined and params_google_client_id | length > 0
+
 - name: Write the backend runtime environment file
   ansible.builtin.template:
     src: env.j2

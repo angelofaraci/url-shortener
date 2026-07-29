@@ -95,3 +95,33 @@ resource "aws_ssm_parameter" "secret_ts_authkey" {
     Name = "${var.project_name}-secret-ts-authkey"
   }
 }
+
+resource "aws_ssm_parameter" "secret_google_client_id" {
+  name        = "/${var.project_name}/secret/google_client_id"
+  description = "Google OAuth client id — optional, seeded manually once, Terraform ignores drift"
+  type        = "SecureString"
+  value       = "placeholder-set-manually"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = {
+    Name = "${var.project_name}-secret-google-client-id"
+  }
+}
+
+resource "aws_ssm_parameter" "secret_google_client_secret" {
+  name        = "/${var.project_name}/secret/google_client_secret"
+  description = "Google OAuth client secret — optional, seeded manually once, Terraform ignores drift"
+  type        = "SecureString"
+  value       = "placeholder-set-manually"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = {
+    Name = "${var.project_name}-secret-google-client-secret"
+  }
+}
