@@ -26,6 +26,11 @@ jobs:
         working-directory: ${{ matrix.app }}
         run: npm ci
 
+      - name: Test
+        if: matrix.app == 'backend'
+        working-directory: ${{ matrix.app }}
+        run: npm test
+
       - name: Build
         working-directory: ${{ matrix.app }}
         run: npm run build

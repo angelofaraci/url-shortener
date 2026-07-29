@@ -22,6 +22,12 @@ const envSchema = z.object({
     .optional()
     .transform((value) => value === 'true'),
   ANON_CLEANUP_INTERVAL_MINUTES: z.coerce.number().int().positive().default(60),
+  // Redis-backed rate limiting (express-rate-limit + rate-limit-redis), applied
+  // globally plus stricter per-endpoint overrides — see src/middlewares/rateLimiter.ts.
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  RATE_LIMIT_CREATE_LINK_MAX: z.coerce.number().int().positive().default(20),
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().int().positive().default(10),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -51,6 +57,10 @@ export const config = {
   anonLinkTtlHours: env.ANON_LINK_TTL_HOURS,
   anonCleanupEnabled: env.ANON_CLEANUP_ENABLED,
   anonCleanupIntervalMinutes: env.ANON_CLEANUP_INTERVAL_MINUTES,
+  rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+  rateLimitMax: env.RATE_LIMIT_MAX,
+  rateLimitCreateLinkMax: env.RATE_LIMIT_CREATE_LINK_MAX,
+  rateLimitAuthMax: env.RATE_LIMIT_AUTH_MAX,
 } as const;
 
 export type Config = typeof config;
