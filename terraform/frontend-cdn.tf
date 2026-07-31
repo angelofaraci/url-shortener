@@ -105,6 +105,30 @@ resource "aws_cloudfront_distribution" "frontend" {
     cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
   }
 
+  # The backend's redirectController sends browsers here for an expired/missing
+  # short code (see backend/src/controllers/redirectController.ts). It's a
+  # client-side React Router route, not an S3 object, so this behavior routes
+  # it to the S3 origin like /index.html above, and the 403 custom_error_response
+  # below (no such key in the bucket) is what actually serves index.html for it.
+  ordered_cache_behavior {
+    path_pattern           = "/link-error"
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  # S3+OAC returns 403 (not 404) for a missing key when the bucket policy only
+  # grants s3:GetObject — there's no s3:ListBucket to tell 403-not-authorized
+  # apart from 403-doesn't-exist. /link-error has no object in the bucket, so
+  # this is what actually makes that route resolve to the SPA shell.
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
   restrictions {
     geo_restriction {
       restriction_type = "none"
