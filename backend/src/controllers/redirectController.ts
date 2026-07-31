@@ -4,7 +4,6 @@ import { linkService } from '../services/linkService.js';
 import { redirectCacheService } from '../services/redirectCacheService.js';
 import { statsService } from '../services/statsService.js';
 import { logger } from '../lib/logger.js';
-import { HttpError } from '../utils/httpError.js';
 
 export async function redirect(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -18,12 +17,12 @@ export async function redirect(req: Request, res: Response, next: NextFunction):
 
     const link = await linkService.getByCode(code);
     if (!link) {
-      next(new HttpError(404, `No link found for code "${code}"`));
+      redirectToLinkError(res, 'not-found');
       return;
     }
 
     if (linkService.isExpired(link)) {
-      next(new HttpError(410, `Link "${code}" has expired`));
+      redirectToLinkError(res, 'expired');
       return;
     }
 
@@ -39,6 +38,13 @@ export async function redirect(req: Request, res: Response, next: NextFunction):
 function sendRedirect(req: Request, res: Response, code: string, url: string): void {
   res.redirect(302, url);
   recordClickForCode(req, code);
+}
+
+// Browsers navigate here directly (short links are clicked, not fetched via the
+// SPA's router), so a missing/expired code sends them on to the app's own
+// styled error screen instead of an API-shaped 404/410 JSON body.
+function redirectToLinkError(res: Response, reason: 'not-found' | 'expired'): void {
+  res.redirect(302, `${config.appBaseUrl}/link-error?reason=${reason}`);
 }
 
 // Fire-and-forget: click logging must never add latency to the redirect response.
