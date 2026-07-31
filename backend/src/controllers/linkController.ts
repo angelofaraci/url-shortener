@@ -16,6 +16,7 @@ const createLinkSchema = z.object({
   expiresAt: z
     .string()
     .refine((value) => !Number.isNaN(Date.parse(value)), 'expiresAt must be a valid ISO date')
+    .refine((value) => Date.parse(value) > Date.now(), 'expiresAt must be in the future')
     .optional(),
 });
 

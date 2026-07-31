@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../repositories/linkRepository.js', () => ({
   linkRepository: {
     findByUserId: vi.fn(),
+    create: vi.fn(),
   },
 }));
 vi.mock('../repositories/clickRepository.js', () => ({
@@ -42,5 +43,45 @@ describe('linkService.listByUser', () => {
 
     expect(result).toEqual([]);
     expect(clickRepository.countByLinkId).not.toHaveBeenCalled();
+  });
+});
+
+describe('linkService.createLink', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(linkRepository.create).mockImplementation(async (input) => ({
+      id: 'link-1',
+      code: input.code,
+      url: input.url,
+      expiresAt: input.expiresAt,
+      userId: input.userId,
+      createdAt: new Date(),
+    }));
+  });
+
+  it('defaults anonymous links (no userId, no expiresAt) to a 24h expiry', async () => {
+    const before = Date.now();
+
+    const link = await linkService.createLink({ url: 'https://a.test', userId: null }, 6);
+
+    const after = Date.now();
+    expect(link.expiresAt).not.toBeNull();
+    const expiresAtMs = link.expiresAt!.getTime();
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + 24 * 60 * 60 * 1000);
+  });
+
+  it('leaves logged-in links (userId set, no expiresAt) without an expiry', async () => {
+    const link = await linkService.createLink({ url: 'https://a.test', userId: 'user-1' }, 6);
+
+    expect(link.expiresAt).toBeNull();
+  });
+
+  it('honors an explicit expiresAt regardless of userId', async () => {
+    const explicit = new Date(Date.now() + 60 * 60 * 1000);
+
+    const link = await linkService.createLink({ url: 'https://a.test', userId: null, expiresAt: explicit }, 6);
+
+    expect(link.expiresAt).toEqual(explicit);
   });
 });

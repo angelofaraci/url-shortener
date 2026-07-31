@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { linkRepository } from '../repositories/linkRepository.js';
 import { clickRepository } from '../repositories/clickRepository.js';
 import { generateRandomCode } from '../utils/codeGenerator.js';
+import { config } from '../config/index.js';
 import type { CreateLinkInput, Link } from '../domain/link.js';
 
 export interface OwnedLink {
@@ -34,10 +35,15 @@ function isUniqueConstraintViolation(error: unknown): boolean {
 
 export const linkService = {
   async createLink(input: CreateLinkInput, shortCodeLength: number): Promise<Link> {
-    const expiresAt = input.expiresAt ?? null;
     // D5: ownership is decided once, at creation time, from the authenticated
     // request's session. It is never reassigned by a later login (no claiming).
     const userId = input.userId ?? null;
+    // Anonymous links without an explicit expiry self-evict after config.anonLinkTtlHours
+    // (same window the cleanup job in jobs/cleanupAnonymousLinks.ts sweeps by); logged-in
+    // users keep theirs forever unless they set a date, matching the signed-out vs
+    // signed-in promise shown on the create-link screen.
+    const expiresAt =
+      input.expiresAt ?? (userId === null ? new Date(Date.now() + config.anonLinkTtlHours * 3_600_000) : null);
 
     if (input.alias) {
       try {

@@ -22,6 +22,15 @@ function datetimeLocalToIso(value: string): string {
   return new Date(value).toISOString();
 }
 
+// `datetime-local`'s `min` wants the same timezone-less local format it emits,
+// truncated to the minute so "right now" isn't itself rejected as past.
+function nowAsDatetimeLocalMin(): string {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 interface LinkFormProps {
   onCreated: (link: Link) => void;
   onSubmitStart: () => void;
@@ -44,6 +53,11 @@ export function LinkForm({ onCreated, onSubmitStart }: LinkFormProps) {
 
     if (!isValidUrl(url)) {
       setError('Please enter a valid URL, including the protocol (e.g. https://example.com).');
+      return;
+    }
+
+    if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+      setError('Expiration date must be in the future.');
       return;
     }
 
@@ -104,6 +118,7 @@ export function LinkForm({ onCreated, onSubmitStart }: LinkFormProps) {
             <input
               type="datetime-local"
               value={expiresAt}
+              min={nowAsDatetimeLocalMin()}
               onChange={(e) => setExpiresAt(e.target.value)}
             />
           </label>

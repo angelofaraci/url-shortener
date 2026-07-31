@@ -99,3 +99,36 @@ describe('GET /api/links/:code/stats', () => {
     expect(prismaMock.link.findUnique).not.toHaveBeenCalled();
   });
 });
+
+describe('POST /api/links', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    redisMock.reset();
+  });
+
+  it('rejects an expiresAt in the past with 400', async () => {
+    const res = await request(app)
+      .post('/api/links')
+      .send({ url: 'https://a.test', expiresAt: '2020-01-01T00:00:00.000Z' });
+
+    expect(res.status).toBe(400);
+    expect(prismaMock.link.create).not.toHaveBeenCalled();
+  });
+
+  it('defaults an anonymous link with no expiresAt to ~24h out', async () => {
+    prismaMock.link.create.mockImplementationOnce(async ({ data }: { data: Record<string, unknown> }) => ({
+      id: 'link-4',
+      createdAt: new Date(),
+      ...data,
+    }));
+
+    const before = Date.now();
+    const res = await request(app).post('/api/links').send({ url: 'https://a.test' });
+    const after = Date.now();
+
+    expect(res.status).toBe(201);
+    const expiresAtMs = new Date(res.body.expiresAt).getTime();
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + 24 * 60 * 60 * 1000);
+  });
+});
