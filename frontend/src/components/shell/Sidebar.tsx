@@ -5,7 +5,6 @@ const NAV_ITEMS = [
   { label: 'Create link', dotColor: '#4c8dff', to: '/' },
   { label: 'My links', dotColor: '#3fb950', to: '/links' },
   { label: 'Link analytics', dotColor: '#8a63e8', to: '/stats' },
-  { label: 'Settings', dotColor: '#d9a441', to: '/settings' },
 ];
 
 export function Sidebar() {
