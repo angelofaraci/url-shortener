@@ -14,7 +14,9 @@ export function CreateLinkPage() {
     <div className="create-grid">
       <LinkForm onCreated={setResult} onSubmitStart={() => setResult(null)} />
       <div className="create-side">
-        {result && <LinkResult shortUrl={buildShortUrl(result.code)} longUrl={result.url} />}
+        {result && (
+          <LinkResult shortUrl={buildShortUrl(result.code)} longUrl={result.url} expiresAt={result.expiresAt} />
+        )}
         <WhatYouGetCard />
       </div>
     </div>
