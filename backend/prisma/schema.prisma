@@ -39,5 +39,5 @@ model Click {
   userAgent String?
   link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
-  @@index([linkId])
+  @@index([linkId, timestamp])
 }

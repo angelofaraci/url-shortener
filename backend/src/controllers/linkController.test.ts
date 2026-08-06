@@ -115,6 +115,16 @@ describe('POST /api/links', () => {
     expect(prismaMock.link.create).not.toHaveBeenCalled();
   });
 
+  it.each(['dashboard', 'stats', 'links', 'assets', 'index.html', 'link-error', 'api', 'auth', 'health'])(
+    'rejects reserved alias "%s" with 400',
+    async (alias) => {
+      const res = await request(app).post('/api/links').send({ url: 'https://a.test', alias });
+
+      expect(res.status).toBe(400);
+      expect(prismaMock.link.create).not.toHaveBeenCalled();
+    },
+  );
+
   it('defaults an anonymous link with no expiresAt to ~24h out', async () => {
     prismaMock.link.create.mockImplementationOnce(async ({ data }: { data: Record<string, unknown> }) => ({
       id: 'link-4',

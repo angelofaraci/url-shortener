@@ -5,6 +5,22 @@ import { linkService, AliasTakenError, CodeGenerationExhaustedError } from '../s
 import { statsService } from '../services/statsService.js';
 import { HttpError } from '../utils/httpError.js';
 
+// Codes that collide with existing/planned frontend routes and API/health
+// mount points. If a link used one of these as its short code, it would
+// become unreachable at the edge (SPA/route shadowing) or shadow a real
+// backend route. See design D7 / reserved-code threat row.
+const RESERVED_ALIASES = new Set([
+  'assets',
+  'index.html',
+  'link-error',
+  'stats',
+  'links',
+  'dashboard',
+  'api',
+  'auth',
+  'health',
+]);
+
 const createLinkSchema = z.object({
   url: z.string().url(),
   alias: z
@@ -12,6 +28,7 @@ const createLinkSchema = z.object({
     .min(1)
     .max(64)
     .regex(/^[a-zA-Z0-9_-]+$/, 'alias must be alphanumeric (dashes/underscores allowed)')
+    .refine((value) => !RESERVED_ALIASES.has(value), 'alias is reserved and cannot be used')
     .optional(),
   expiresAt: z
     .string()

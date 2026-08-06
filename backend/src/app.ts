@@ -6,6 +6,7 @@ import { config } from './config/index.js';
 import { linkRoutes } from './routes/linkRoutes.js';
 import { healthRoutes } from './routes/healthRoutes.js';
 import { authRoutes } from './routes/authRoutes.js';
+import { analyticsRoutes } from './routes/analyticsRoutes.js';
 import { redirectRoutes } from './routes/redirectRoutes.js';
 import { requestLogger } from './middlewares/requestLogger.js';
 import { optionalSession } from './middlewares/optionalSession.js';
@@ -41,6 +42,11 @@ export function createApp(): Express {
   app.use(generalRateLimiter);
 
   app.use('/api/links', linkRoutes);
+  // Must be registered before the "/:code" catch-all below, or
+  // /api/analytics/dashboard would be shadowed and misinterpreted as a lookup
+  // for short code "api" (single-segment route matching stops at the first
+  // path separator, so this order also fully protects the two-segment path).
+  app.use('/api/analytics', analyticsRoutes);
   // Must be registered before the "/:code" catch-all below, or /auth/me would be
   // shadowed and misinterpreted as a lookup for short code "auth".
   app.use('/auth', authRoutes);
