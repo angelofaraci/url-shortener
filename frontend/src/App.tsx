@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './layouts/AppLayout';
 import { CreateLinkPage } from './pages/CreateLinkPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { LinkErrorPage } from './pages/LinkErrorPage';
 import { LinkStatsPage } from './pages/LinkStatsPage';
 import { MyLinksPage } from './pages/MyLinksPage';
@@ -13,6 +14,7 @@ export function App() {
         <Route path="/stats" element={<LinkStatsPage />} />
         <Route path="/stats/:code" element={<LinkStatsPage />} />
         <Route path="/links" element={<MyLinksPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
       </Route>
       <Route path="/link-error" element={<LinkErrorPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

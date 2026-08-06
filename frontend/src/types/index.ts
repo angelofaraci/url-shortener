@@ -35,3 +35,20 @@ export interface MyLink {
 export type MyLinksResponse =
   | { authenticated: false; links: [] }
   | { authenticated: true; links: MyLink[] };
+
+export interface SeriesPoint {
+  date: string;
+  clicks: number;
+}
+
+export interface TopLink {
+  linkId: string;
+  shortCode: string;
+  totalClicks: number;
+}
+
+export interface DashboardAnalytics {
+  totalClicks30d: number;
+  series: SeriesPoint[];
+  topLinks: TopLink[];
+}

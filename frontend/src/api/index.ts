@@ -1,4 +1,4 @@
-import type { Link, MyLinksResponse, SessionUser, StatsResponse } from '../types';
+import type { DashboardAnalytics, Link, MyLinksResponse, SessionUser, StatsResponse } from '../types';
 
 // Read only from import.meta.env — never hardcode the backend origin in source,
 // since the short URL shown to the user is built client-side as `${baseUrl}/${code}`.
@@ -83,6 +83,22 @@ export async function listMyLinks(): Promise<MyLinksResponse> {
   }
 
   return (await response.json()) as MyLinksResponse;
+}
+
+// GET /api/analytics/dashboard is authenticated-only (401 without a session,
+// per design D6 — no anonymous {authenticated:false} shape here, unlike
+// GET /api/links). `credentials: 'include'` sends the session cookie.
+export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
+  const response = await fetch(`${baseUrl}/api/analytics/dashboard`, { credentials: 'include' });
+
+  if (response.status === 401) {
+    throw new ApiError(await parseErrorMessage(response, 'Authentication required.'), 401);
+  }
+  if (!response.ok) {
+    throw new ApiError(await parseErrorMessage(response, 'Failed to fetch dashboard analytics.'), response.status);
+  }
+
+  return (await response.json()) as DashboardAnalytics;
 }
 
 export function buildShortUrl(code: string): string {
