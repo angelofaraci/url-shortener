@@ -119,6 +119,72 @@ resource "aws_cloudfront_distribution" "frontend" {
     cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
   }
 
+  # /stats, /links, and /dashboard are the frontend's other client-side React
+  # Router routes (design D7). CloudFront path_pattern has no "Prefix" type —
+  # a literal pattern matches only that exact path — so each route needs an
+  # explicit "/x/*" sibling to also cover its sub-paths (e.g. /stats/:code).
+  # Each behavior below is a verbatim copy of /link-error above: same origin,
+  # same policies. None of these are real S3 objects; the 403
+  # custom_error_response below is what actually resolves them to the SPA
+  # shell, identically to /link-error and /index.html. Keep this list in sync
+  # with the mirrored Prefix rules in k8s/ingress.yaml and with
+  # RESERVED_ALIASES in backend/src/controllers/linkController.ts, which
+  # reserves these same codes so a short link can never collide with a
+  # client-side SPA route.
+  ordered_cache_behavior {
+    path_pattern           = "/stats"
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/stats/*"
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/links"
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/links/*"
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/dashboard"
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/dashboard/*"
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
   # S3+OAC returns 403 (not 404) for a missing key when the bucket policy only
   # grants s3:GetObject — there's no s3:ListBucket to tell 403-not-authorized
   # apart from 403-doesn't-exist. /link-error has no object in the bucket, so

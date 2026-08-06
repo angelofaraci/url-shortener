@@ -3,8 +3,17 @@
 # "/assets" prefixes are more specific than the fallback "/" prefix, so they
 # always win over it. The fallback "/" prefix catches single-segment short
 # codes (e.g. /aB3dE9) and routes them to the backend's redirect handler.
-# The frontend has no client-side routes of its own (plain static SPA),
-# so it only needs the exact root path plus its Vite-built /assets bundle.
+# The frontend DOES have client-side routes of its own (React Router SPA):
+# /stats, /links, /dashboard, and /link-error. Each is routed here as its
+# own "Prefix" rule pointing at the frontend service so direct navigation
+# and hard-refresh resolve to the SPA shell instead of falling through to
+# the backend's short-code redirect handler. "Prefix" matching is
+# segment-wise, so /stats also covers /stats/:code and so on — no separate
+# wildcard rules are needed. Keep this list in sync with the mirrored
+# CloudFront behaviors in terraform/frontend-cdn.tf (see D7 in the design
+# doc for the source-of-truth rationale) and with RESERVED_ALIASES in
+# backend/src/controllers/linkController.ts, which reserves these same
+# codes so a short link can never collide with a client-side SPA route.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -33,6 +42,34 @@ spec:
                 port:
                   number: 3000
           - path: /assets
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /stats        # covers /stats and /stats/:code
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /links        # covers /links and future sub-paths
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /dashboard
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /link-error
             pathType: Prefix
             backend:
               service:
