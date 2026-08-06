@@ -633,3 +633,32 @@ button {
   margin-top: 10px;
 }
 
+/* --- Dashboard screen (analytics-dashboard) --- */
+
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeUp 0.3s ease both;
+}
+
+.stat-summary__value {
+  margin: 0 0 4px;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.clicks-bar-chart {
+  width: 100%;
+  height: 160px;
+  display: block;
+}
+
+.clicks-bar-chart__bar {
+  fill: var(--accent);
+}
+
+.clicks-bar-chart__bar:hover {
+  fill: var(--accent-hover);
+}
+
